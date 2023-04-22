@@ -1,0 +1,85 @@
+.directory_header {
+    float: left;
+    width: 100%;
+    z-index: 3;
+}
+
+.directory_main {
+    display: flex;
+    -webkit-flex-wrap: wrap;          /* Safari etc. */
+    -ms-flex-wrap    : wrap;          /* IE10        */
+    flex-wrap        : wrap;
+    align-content: flex-start;
+}
+
+.new_fur_menu_header {
+    float: left;
+    z-index: 3;
+}
+
+header {
+    font-size: large;
+    background-color: #aaaaaa;
+}
+
+header button {
+    background-color: white;
+    border-radius: 5px;
+    margin: 5px;
+    font-size: large;
+}
+
+.room_header {
+    background-color: #aaaacc;
+}
+
+.file {
+    border-radius: 15px;
+}
+
+.delete_button {
+    background-color: red;
+}
+
+.popup {
+    position: fixed;
+    background-color: lightslategray;
+    padding: 5%;
+    left: 50%;
+    top: 50%;
+    transform: translateX(-50%)
+               translateY(-50%);
+}
+
+.popup button {
+    border-radius: 10px;
+    font-size: 25px;
+    width: 200px;
+    margin: 5px 0px;
+}
+
+.import_popup {
+    position: absolute;
+    overflow: scroll;
+    background: #9999aa
+}
+
+.type {
+    background-color: #ffcd37;
+}
+
+.data {
+    background-color: #aaccaa;
+}
+
+.process {
+    background-color: #ccaaaa;
+}
+
+.room {
+    background-color: #aaaacc;
+}
+
+.directory {
+    background-color: #aaaaaa;
+}
