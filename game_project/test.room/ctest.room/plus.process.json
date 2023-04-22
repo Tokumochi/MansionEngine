@@ -1,0 +1,5 @@
+{
+    "params_str": "{a: number, b: number}",
+    "rets_str": "{res: number}",
+    "code": "res = a + b"
+}

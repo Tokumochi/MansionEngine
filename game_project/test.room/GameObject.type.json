@@ -1,0 +1,1 @@
+"{\n    position: {\n        x: number,\n        y: number,\n    },\n    radius: number,\n}"

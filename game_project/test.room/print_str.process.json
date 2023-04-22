@@ -1,0 +1,1 @@
+{"params_str":"{\n    arg: string\n}","rets_str":"{con: string}","code":"_print(arg)\n con = arg"}

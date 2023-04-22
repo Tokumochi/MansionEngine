@@ -1,0 +1,1 @@
+{"params_str":"{\n    enemy: {\n        pos: {\n            x: number,\n            y: number,\n        },\n        HP: number,\n    },\n    damage: number,\n}","rets_str":"{\n    enemy: {\n        pos: {\n            x: number,\n            y: number,\n        },\n        HP: number,\n    },\n}","code":"enemy.HP -= damage\nnew_enemy = enemy"}

@@ -1,0 +1,35 @@
+{
+    "data_furs": [
+        [ "3", {
+            "x": 100,
+            "y": 300,
+            "path": "test-radius50",
+            "data_type": {"kind": "number"}
+        }]
+    ],
+    "process_furs": [
+        [ "4", {
+            "x": 530,
+            "y": 30,
+            "path": "test-print",
+            "sources": [{"id": "3", "index": 0, "type": {"kind": "number"}}],
+            "emits": [{"kind": "number"}]
+        }],
+        [ "5", {
+            "x": 330,
+            "y": 30,
+            "path": "test-draw",
+            "sources": [{"id": "3", "index": 0, "type": {"kind": "number"}}, {"id": "-1", "index": -1, "type": {"kind": "number"}}, {"id": "-1", "index": -1, "type": {"kind": "number"}}],
+            "emits": []
+        }]
+    ],
+    "croom_furs": [
+        [ "6", {
+            "x": 500,
+            "y": 600,
+            "path": "test-ctest",
+            "emit": {"kind": "number"}
+        }]
+    ],
+    "output_source": {"id": "4", "index": 0, "type": {"kind": "number"}}
+}
