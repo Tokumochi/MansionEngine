@@ -152,13 +152,13 @@ io.on('connection', (socket: Socket) => {
                 break;
             case "room":
                 fs.mkdirSync(real_path + '/' + new_name + '.room');
-                fs.writeFileSync(real_path + '/' + new_name + '.room/placement.json', '{\n"data_furs": [],\n"process_furs": [],\n"croom_furs": [],\n"output_source": {"id: "-1", "index": 0}\n}');
+                fs.writeFileSync(real_path + '/' + new_name + '.room/placement.json', '{\n"data_furs": [],\n"process_furs": [],\n"croom_furs": [],\n"output_source": {"id": "-1", "index": 0, "type": {"kind": "number"}}\n}');
                 break;
             case "type":
-                fs.writeFileSync(real_path + '/' + new_name + '.type.json', 'number');
+                fs.writeFileSync(real_path + '/' + new_name + '.type.json', '"number"');
                 break;
             case "data":
-                fs.writeFileSync(real_path + '/' + new_name + '.data.json', '0');
+                fs.writeFileSync(real_path + '/' + new_name + '.data.json', '"0"');
                 break;
             case "process":
                 fs.writeFileSync(real_path + '/' + new_name + '.process.json', '{\n"args": [],\n"ret": [],\n"code": ""\n}');
@@ -292,15 +292,16 @@ io.on('connection', (socket: Socket) => {
         const lower_type = get_fur_emit_type(place, lower_id, lower_index);
         if(lower_type === undefined) return;
 
+        // 上側がroomのoutputの場合
         if(upper_id === "output") {
-            if(is_same_type(place.output_source.type, lower_type)) {
-                place.output_source.id = lower_id;
-                place.output_source.index = lower_index;
-                io.in(room_path).emit("update output source", lower_id, lower_index);
-            }
+            place.output_source.id = lower_id;
+            place.output_source.index = lower_index;
+            place.output_source.type = lower_type;
+            io.in(room_path).emit("update output source", lower_id, lower_index, lower_type);
             return;
         }
 
+        // 上側がprocess_furnitureの場合
         const upper_process_fur = place.process_furs.get(upper_id);
         if(upper_process_fur !== undefined) {
             if(is_same_type(upper_process_fur.sources[upper_index].type, lower_type)) {
