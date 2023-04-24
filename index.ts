@@ -221,12 +221,10 @@ io.on('connection', (socket: Socket) => {
         }
         socket.join(room_path);
 
-        io.to(socket.id).emit("update placement", {
-            data_furs: Array.from(place.data_furs),
-            process_furs: Array.from(place.process_furs),
-            croom_furs: Array.from(place.croom_furs),
-            output_source: place.output_source,
-        });
+        io.to(socket.id).emit("update data furs", Array.from(place.data_furs));
+        io.to(socket.id).emit("update process furs", Array.from(place.process_furs));
+        io.to(socket.id).emit("update croom furs", Array.from(place.croom_furs));
+        io.to(socket.id).emit("update output source", place.output_source);
     });
     socket.on("set fur pos", (room_path: string, target_id: string, x: number, y: number) => {
         const place = get_place(room_path);
@@ -248,11 +246,38 @@ io.on('connection', (socket: Socket) => {
             return;
         }
 
-        const target_room_fur = place.croom_furs.get(target_id);
-        if(target_room_fur !== undefined) {
-            const new_room_fur = {...target_room_fur, x: x, y: y};
+        const target_croom_fur = place.croom_furs.get(target_id);
+        if(target_croom_fur !== undefined) {
+            const new_room_fur = {...target_croom_fur, x: x, y: y};
             place.croom_furs.set(target_id, new_room_fur);
             io.in(room_path).emit("update croom fur", target_id, new_room_fur);
+            return;
+        }
+
+        console.log("room path or fur id is wrong.")
+    });
+    socket.on("delete fur", (room_path: string, target_id: string) => {
+        const place = get_place(room_path);
+        if(place === undefined) return;
+        
+        const target_data_fur = place.data_furs.get(target_id);
+        if(target_data_fur !== undefined) {
+            place.data_furs.delete(target_id);
+            io.in(room_path).emit("update data furs", Array.from(place.data_furs));
+            return;
+        }
+
+        const target_process_fur = place.process_furs.get(target_id);
+        if(target_process_fur !== undefined) {
+            place.process_furs.delete(target_id);
+            io.in(room_path).emit("update process furs", Array.from(place.process_furs));
+            return;
+        }
+
+        const target_croom_fur = place.croom_furs.get(target_id);
+        if(target_croom_fur !== undefined) {
+            place.croom_furs.delete(target_id);
+            io.in(room_path).emit("update croom furs", Array.from(place.croom_furs));
             return;
         }
 
