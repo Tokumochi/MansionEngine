@@ -10,7 +10,8 @@ import './style.css'
 
 type Popup = 
   | {kind: "None"}
-  | {kind: "NewFur" | "EditFur", x: number, y: number}
+  | {kind: "NewFur", x: number, y: number}
+  | {kind: "EditFur", x: number, y: number, fur_id: string}
 
 export type Inst = {kind: "LOAD", var_indexes: Inst[]} |
             {kind: "STORE", var_indexes: Inst[], value: Inst} |
@@ -32,13 +33,6 @@ export interface RoomRunInfo {
   process_insts: [string, Inst][],
   croom_run_infos: [string, RoomRunInfo][],
 
-  output_source: {id: string, index: number},
-}
-
-interface Placement {
-  data_furs: [string, DataFurniture][],
-  process_furs: [string, ProcessFurniture][],
-  croom_furs: [string, CroomFurniture][],
   output_source: {id: string, index: number},
 }
 
@@ -70,12 +64,9 @@ function EditPlacement() {
   const [popup, setPopup] = useState({kind: "None"} as Popup);
   
   useEffect(() => {
-    socket.on("update placement", (place: Placement) => {
-      setDataFurs(new Map(place.data_furs));
-      setProcessFurs(new Map(place.process_furs));
-      setCroomFurs(new Map(place.croom_furs));
-      setOutputSource(place.output_source);
-    });
+    socket.on("update data furs", (data_furs: [string, DataFurniture][]) => setDataFurs(new Map(data_furs)));
+    socket.on("update process furs", (process_furs: [string, ProcessFurniture][]) => setProcessFurs(new Map(process_furs)));
+    socket.on("update croom furs", (croom_furs: [string, CroomFurniture][]) => setCroomFurs(new Map(croom_furs)));
 
     socket.on("update output source", (id: string, index: number) => {console.log(id, index); setOutputSource({id: id, index: index})});
 
@@ -86,13 +77,19 @@ function EditPlacement() {
   }, []);
 
   useEffect(() => {
-    socket.on("update data fur", (id: string, data_fur: DataFurniture) => { setDataFurs(new Map(data_furs.set(id, data_fur))) });
+    socket.on("update data fur", (id: string, data_fur: DataFurniture) => {
+      setDataFurs(new Map(data_furs.set(id, data_fur)));
+    });
   }, [data_furs]);
   useEffect(() => {
-    socket.on("update process fur", (id: string, process_fur:  ProcessFurniture) => { setProcessFurs(new Map(process_furs.set(id, process_fur))) })
+    socket.on("update process fur", (id: string, process_fur:  ProcessFurniture) => {
+      setProcessFurs(new Map(process_furs.set(id, process_fur)))
+    })
   }, [process_furs]);
   useEffect(() => {
-    socket.on("update croom fur", (id: string, croom_fur: CroomFurniture) => { setCroomFurs(new Map(croom_furs.set(id, croom_fur))) })
+    socket.on("update croom fur", (id: string, croom_fur: CroomFurniture) => {
+      setCroomFurs(new Map(croom_furs.set(id, croom_fur)))
+    })
   }, [croom_furs]);
 
   useEffect(() => {
@@ -183,7 +180,7 @@ function EditPlacement() {
           onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: process_fur.x, y: process_fur.y})}
         />
         <text x={process_fur.x + fur_width / 2} y={process_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central"
-          onContextMenu={(e) => {e.preventDefault(); e.stopPropagation(); setPopup({kind: 'EditFur', x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY})}}
+          onClick={(e) => {e.stopPropagation(); setPopup({kind: 'EditFur', x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, fur_id: id})}}
         >
           {process_fur.path.split('-').pop()}
         </text>
@@ -225,7 +222,11 @@ function EditPlacement() {
         <rect x={data_fur.x} y={data_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaccaa"
           onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: data_fur.x, y: data_fur.y})} 
         />
-        <text x={data_fur.x + fur_width / 2} y={data_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central">{data_fur.path.split('-').pop()}</text>
+        <text x={data_fur.x + fur_width / 2} y={data_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central"
+          onClick={(e) => {e.stopPropagation(); setPopup({kind: 'EditFur', x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, fur_id: id})}}
+        >
+          {data_fur.path.split('-').pop()}
+        </text>
         <circle cx={data_fur.x + fur_width / 2} cy={data_fur.y} r={10} 
           onMouseUp={() => {
             if(tempUpper.isDisplayed) {
@@ -242,7 +243,11 @@ function EditPlacement() {
         <rect x={croom_fur.x} y={croom_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaaacc"
           onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: croom_fur.x, y: croom_fur.y})} 
         />
-        <text x={croom_fur.x + fur_width / 2} y={croom_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central">{croom_fur.path.split('-').pop()}</text>
+        <text x={croom_fur.x + fur_width / 2} y={croom_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central"
+          onClick={(e) => {e.stopPropagation(); setPopup({kind: 'EditFur', x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, fur_id: id})}}
+        >
+          {croom_fur.path.split('-').pop()}
+        </text>
         <circle cx={croom_fur.x + fur_width / 2} cy={croom_fur.y} r={10} 
           onMouseUp={() => {
             if(tempUpper.isDisplayed) {
@@ -294,10 +299,10 @@ function EditPlacement() {
       {
         // Furnitureの編集ポップアップ
         popup.kind === 'EditFur' &&
-        <div style={{
+        <div className='edit_fur_popup' style={{
           left: popup.x - 50, top: popup.y - 50, background: "#9999aa"
         }} onMouseLeave={closeMenu}>
-          <></>
+          <button onClick={() => {socket.emit("delete fur", path, popup.fur_id); closeMenu();}}>削除</button>
         </div>
       }
       {
