@@ -143,7 +143,7 @@ export function Directory(props: {path: string}) {
 					<input className='name_input' type="text" value={temp_file_name} onChange={(e) => setTempFileName(e.target.value)}/>
 					<br/>
 					{
-						['data', 'process', 'room', 'directory'].map((new_type) => {
+						['data', 'process', 'room', 'directory', 'type'].map((new_type) => {
 							return <button className={new_type} onClick={() => {
 								socket.emit("create new file", path, temp_file_name, new_type);
 								setTempFileName("");

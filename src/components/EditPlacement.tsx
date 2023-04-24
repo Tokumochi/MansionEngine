@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 
-import {DataFurniture, CroomFurniture, ProcessFurniture} from './Main';
+import { Type, DataFurniture, CroomFurniture, ProcessFurniture } from './Main';
 import Import from './Import';
 import RunRoom from './RunRoom';
 
@@ -57,7 +57,7 @@ function EditPlacement() {
   const [data_furs, setDataFurs] = useState(new Map([] as [string, DataFurniture][]));
   const [process_furs, setProcessFurs] = useState(new Map([] as [string, ProcessFurniture][]));
   const [croom_furs, setCroomFurs] = useState(new Map([] as [string, CroomFurniture][]));
-  const [output_source, setOutputSource] = useState({id: "-1", index: -1});
+  const [output_source, setOutputSource] = useState({id: "-1", index: -1, type: {"kind": "number"}});
 
   const [isRunMode, setIsRunMode] = useState(false);
 
@@ -68,7 +68,7 @@ function EditPlacement() {
     socket.on("update process furs", (process_furs: [string, ProcessFurniture][]) => setProcessFurs(new Map(process_furs)));
     socket.on("update croom furs", (croom_furs: [string, CroomFurniture][]) => setCroomFurs(new Map(croom_furs)));
 
-    socket.on("update output source", (id: string, index: number) => {console.log(id, index); setOutputSource({id: id, index: index})});
+    socket.on("update output source", (id: string, index: number, type: Type) => {console.log(id, index); setOutputSource({id: id, index: index, type: type})});
 
     socket.on("run", (room_run_info: RoomRunInfo) => {
       top_room_run_info = room_run_info;
