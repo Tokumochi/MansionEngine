@@ -1,5 +1,5 @@
 {
     "params_str": "{radius: number, x: number, y: number}",
     "rets_str": "{}",
-    "code": "_draw_circle(radius, x, y)"
+    "code": "__draw_circle__(radius, x, y)"
 }

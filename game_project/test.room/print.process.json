@@ -1,5 +1,5 @@
 {
     "params_str": "{arg: number}",
     "rets_str": "{con: number}",
-    "code": "_print(arg)\n con = arg"
+    "code": "__print__(arg)\n con = arg"
 }

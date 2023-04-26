@@ -8,7 +8,7 @@ import { get_data_str, has_joined_data_str, data_str_to_type_and_data, set_data_
 import { get_process, Process, set_process } from './lib/processManager'
 import { get_place, has_joined_place, get_fur_emit_type, DataFurniture, ProcessFurniture, CroomFurniture } from './lib/placeManager'
 import { get_dir, has_joined_dir, FileType } from './lib/dirManager'
-import { Inst, genProcessInst } from './lib/genInst'
+import { StmtInst, genProcessInst } from './lib/genInst'
 
 export interface RoomRunInfo {
     data_furs: [string, DataFurniture][],
@@ -16,7 +16,7 @@ export interface RoomRunInfo {
     croom_furs: [string, CroomFurniture][],
   
     data_values: [string, any][],
-    process_insts: [string, Inst][],
+    process_insts: [string, StmtInst][],
     croom_run_infos: [string, RoomRunInfo][],
   
     output_source: {id: string, index: number},
@@ -396,7 +396,6 @@ io.on('connection', (socket: Socket) => {
     });
     socket.on("compile", (room_path: string) => {
         const room_run_info = genRoomRunInfo(room_path);
-        if(room_run_info === undefined) return;
         io.to(socket.id).emit("run", room_run_info);
     });
     socket.on("save placement", (room_path: string) => {
