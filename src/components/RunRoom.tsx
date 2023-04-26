@@ -2,14 +2,17 @@ import React, { useEffect, useState } from 'react';
 
 import { Type, DataFurniture, ProcessFurniture, CroomFurniture } from './Main';
 
+type StoreKind = "STORE" | "ADDSTORE" | "PUSHSTORE"
 type BinaryKind = "EQU" | "NEQ" | "ELT" | "EGT" | "LT" | "GT" | "ADD" | "SUB" | "MUL" | "DIV"
+type PressedKind = "W" | "A" | "S" | "D"
 
 type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
-            {kind: "STORE", var_indexes: ExprInst[], value: ExprInst} |
+            {kind: StoreKind, var_indexes: ExprInst[], value: ExprInst} |
             {kind: BinaryKind, left: ExprInst, right: ExprInst} |
             {kind: "NUM", num: number} |
             {kind: "PRINT", value: ExprInst} |
-            {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst}
+            {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst} |
+            {kind: PressedKind}
 
 export type StmtInst = {kind: "EXPR", expr: ExprInst} |
             {kind: "BLOCK", stmts: StmtInst[]} |
@@ -27,6 +30,23 @@ export interface RoomRunInfo {
   output_source: {id: string, index: number},
 }
 
+let is_W_pressed = 0;
+let is_A_pressed = 0;
+let is_S_pressed = 0;
+let is_D_pressed = 0;
+
+document.onkeydown = (e) => {
+	if(e.code === "KeyW") is_W_pressed = 1;
+	if(e.code === "KeyA") is_A_pressed = 1;
+	if(e.code === "KeyS") is_S_pressed = 1;
+	if(e.code === "KeyD") is_D_pressed = 1;
+};
+document.onkeyup = (e) => {
+	if(e.code === "KeyW") is_W_pressed = 0;
+	if(e.code === "KeyA") is_A_pressed = 0;
+	if(e.code === "KeyS") is_S_pressed = 0;
+	if(e.code === "KeyD") is_D_pressed = 0;
+};
 
 function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 	console.log(props.top_room_run_info);
@@ -84,7 +104,9 @@ function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 							tmp_var_memories = tmp_var_memories[var_index];
 						}
 						return tmp_var_memories;
-					case "STORE": {
+					case "STORE":
+					case "ADDSTORE":
+					case "PUSHSTORE": {
 						let tmp_var_memories = var_memories;
 						// 配列のインデックスで更新しなければいけないため
 						const last_index_inst = expr_inst.var_indexes[expr_inst.var_indexes.length - 1];
@@ -98,7 +120,11 @@ function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 						const last_var_index = run_expr(last_index_inst);
 						const value = run_expr(expr_inst.value);
 						if(value === undefined) return undefined;
-						tmp_var_memories[last_var_index] = value;
+
+						if(expr_inst.kind === "STORE") tmp_var_memories[last_var_index] = value;
+						else if(expr_inst.kind === "ADDSTORE") tmp_var_memories[last_var_index] += value;
+						else tmp_var_memories[last_var_index].push(value);
+
 						return value; 
 					}
 					case "NUM":
@@ -117,6 +143,10 @@ function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 						if(typeof x !== 'number' || typeof y !== 'number' || typeof radius !== 'number') return undefined;
 						draw_circle(x, y, radius);
 						return;
+					case "W": return is_W_pressed;
+					case "A": return is_A_pressed;
+					case "S": return is_S_pressed;
+					case "D": return is_D_pressed;
 				}
 
 				const left = run_expr(expr_inst.left);
@@ -209,9 +239,9 @@ function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 			}
 
 			run_room(props.top_room_run_info);
-  		//requestAnimationFrame(tick);
+			requestAnimationFrame(tick);
 		}
-		tick();
+		requestAnimationFrame(tick);
 	}, [])
 
 	return (
