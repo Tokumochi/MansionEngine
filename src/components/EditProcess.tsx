@@ -31,9 +31,9 @@ function EditProcess() {
 		<header style={{display: 'flex', justifyContent: 'space-evenly'}}>
 			<button onClick={() => socket.emit("save process", path, {params_str: params_str, rets_str: rets_str, code: code})}>Save</button>
 		</header>
-    <textarea cols={100} rows={10} value={params_str} onChange={(e) => setParamsStr(e.target.value)} />
-    <textarea cols={100} rows={30} value={code} onChange={(e) => setCode(e.target.value)} />
-    <textarea cols={100} rows={10} value={rets_str} onChange={(e) => setRetsStr(e.target.value)} />
+    <textarea cols={150} rows={10} value={params_str} onChange={(e) => setParamsStr(e.target.value)} />
+    <textarea cols={150} rows={30} value={code} onChange={(e) => setCode(e.target.value)} />
+    <textarea cols={150} rows={10} value={rets_str} onChange={(e) => setRetsStr(e.target.value)} />
   </>
 }
 

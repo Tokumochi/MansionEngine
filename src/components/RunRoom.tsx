@@ -1,7 +1,32 @@
 import React, { useEffect, useState } from 'react';
 
-import { Type, DataFurniture, ProcessFurniture } from './Main';
-import { Inst, RoomRunInfo } from './EditPlacement';
+import { Type, DataFurniture, ProcessFurniture, CroomFurniture } from './Main';
+
+type BinaryKind = "EQU" | "NEQ" | "ELT" | "EGT" | "LT" | "GT" | "ADD" | "SUB" | "MUL" | "DIV"
+
+type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
+            {kind: "STORE", var_indexes: ExprInst[], value: ExprInst} |
+            {kind: BinaryKind, left: ExprInst, right: ExprInst} |
+            {kind: "NUM", num: number} |
+            {kind: "PRINT", value: ExprInst} |
+            {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst}
+
+export type StmtInst = {kind: "EXPR", expr: ExprInst} |
+            {kind: "BLOCK", stmts: StmtInst[]} |
+            {kind: "IF" | "WHILE", cond: ExprInst, if: StmtInst}
+
+export interface RoomRunInfo {
+  data_furs: [string, DataFurniture][],
+  process_furs: [string, ProcessFurniture][],
+  croom_furs: [string, CroomFurniture][],
+
+  data_values: [string, any][],
+  process_insts: [string, StmtInst][],
+  croom_run_infos: [string, RoomRunInfo][],
+
+  output_source: {id: string, index: number},
+}
+
 
 function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 	console.log(props.top_room_run_info);
@@ -29,19 +54,27 @@ function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 		const tick = () => {
 			var var_memories: any[] = [];
 		
-			const run_stmt = (stmt_inst: Inst) => {
+			const run_stmt = (stmt_inst: StmtInst) => {
 				switch(stmt_inst.kind) {
+					case "EXPR":
+						run_expr(stmt_inst.expr);
+						return;
 					case "BLOCK":
-						for(const inst of stmt_inst.insts) {
-							run_expr(inst);
-						}
+						for(const stmt of stmt_inst.stmts)
+							run_stmt(stmt);
+						return;
+					case "IF":
+						if(run_expr(stmt_inst.cond))
+							run_stmt(stmt_inst.if);
+						return;
+					case "WHILE":
+						while(run_expr(stmt_inst.cond))
+							run_stmt(stmt_inst.if);
 						return;
 				}
-				console.log("What's happening!?");
-				return undefined;
 			}
 		
-			const run_expr = (expr_inst: Inst): any | undefined => {
+			const run_expr = (expr_inst: ExprInst): any | undefined => {
 				switch(expr_inst.kind) {
 					case "LOAD":
 						let tmp_var_memories = var_memories;
@@ -54,43 +87,19 @@ function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 					case "STORE": {
 						let tmp_var_memories = var_memories;
 						// 配列のインデックスで更新しなければいけないため
-						const last_index_inst = expr_inst.var_indexes.pop();
-						if(last_index_inst === undefined) return undefined;
-						const last_var_index = run_expr(last_index_inst);
+						const last_index_inst = expr_inst.var_indexes[expr_inst.var_indexes.length - 1];
 						// 変数メモリを一次元に
-						for(const index_inst of expr_inst.var_indexes) {
+						for(let i = 0; i < expr_inst.var_indexes.length - 1; i++) {
+							const index_inst = expr_inst.var_indexes[i];
 							const var_index = run_expr(index_inst);
 							if(var_index === undefined) return undefined;
 							tmp_var_memories = tmp_var_memories[var_index];
 						}
+						const last_var_index = run_expr(last_index_inst);
 						const value = run_expr(expr_inst.value);
 						if(value === undefined) return undefined;
 						tmp_var_memories[last_var_index] = value;
 						return value; 
-					}
-					case "ADD": {
-						const left = run_expr(expr_inst.left);
-						const right = run_expr(expr_inst.right);
-						if(left === undefined || right === undefined || typeof left !== 'number' || typeof right !== 'number') return undefined;
-						return left + right;
-					}
-					case "SUB": {
-						const left = run_expr(expr_inst.left);
-						const right = run_expr(expr_inst.right);
-						if(left === undefined || right === undefined || typeof left !== 'number' || typeof right !== 'number') return undefined;
-						return left - right;
-					}
-					case "MUL": {
-						const left = run_expr(expr_inst.left);
-						const right = run_expr(expr_inst.right);
-						if(left === undefined || right === undefined || typeof left !== 'number' || typeof right !== 'number') return undefined;
-						return left * right;
-					}
-					case "DIV": {
-						const left = run_expr(expr_inst.left);
-						const right = run_expr(expr_inst.right);
-						if(left === undefined || right === undefined || typeof left !== 'number' || typeof right !== 'number') return undefined;
-						return left / right;
 					}
 					case "NUM":
 						return expr_inst.num;
@@ -109,8 +118,23 @@ function RunRoom(props: {top_room_run_info: RoomRunInfo}) {
 						draw_circle(x, y, radius);
 						return;
 				}
-				console.log("What's happening!?");
-				return undefined;
+
+				const left = run_expr(expr_inst.left);
+				const right = run_expr(expr_inst.right);
+				if(left === undefined || right === undefined || typeof left !== 'number' || typeof right !== 'number') return undefined;
+
+				switch(expr_inst.kind) {
+					case "EQU": return left === right ? 1 : 0;
+					case "NEQ": return left !== right ? 1 : 0;
+					case "ELT": return left <= right ? 1 : 0;
+					case "EGT": return left >= right ? 1 : 0;
+					case "LT": return left < right ? 1 : 0;
+					case "GT": return left > right ? 1 : 0;
+					case "ADD": return left + right;
+					case "SUB": return left - right;
+					case "MUL": return left * right;
+					case "DIV": return left / right;
+				}
 			}
 
 			const run_room = (room_run_info: RoomRunInfo): any | undefined => {

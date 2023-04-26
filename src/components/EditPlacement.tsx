@@ -4,42 +4,16 @@ import { io } from 'socket.io-client';
 
 import { Type, DataFurniture, CroomFurniture, ProcessFurniture } from './Main';
 import Import from './Import';
-import RunRoom from './RunRoom';
+import RunRoom, { RoomRunInfo } from './RunRoom';
 
 import './style.css'
+
 
 type Popup = 
   | {kind: "None"}
   | {kind: "NewFur", x: number, y: number}
   | {kind: "EditFur", x: number, y: number, fur_id: string}
 
-export type Inst = {kind: "LOAD", var_indexes: Inst[]} |
-            {kind: "STORE", var_indexes: Inst[], value: Inst} |
-            {kind: "ADD", left: Inst, right: Inst} |
-            {kind: "SUB", left: Inst, right: Inst} |
-            {kind: "MUL", left: Inst, right: Inst} |
-            {kind: "DIV", left: Inst, right: Inst} |
-            {kind: "NUM", num: number} |
-            {kind: "PRINT", value: Inst} |
-            {kind: "DRAWCIRCLE", radius: Inst, x: Inst, y: Inst} |
-            {kind: "BLOCK", insts: Inst[]}
-
-export interface RoomRunInfo {
-  data_furs: [string, DataFurniture][],
-  process_furs: [string, ProcessFurniture][],
-  croom_furs: [string, CroomFurniture][],
-
-  data_values: [string, any][],
-  process_insts: [string, Inst][],
-  croom_run_infos: [string, RoomRunInfo][],
-
-  output_source: {id: string, index: number},
-}
-
-export interface ContextMenuState {
-  isWindowOn: boolean,
-  point: {x: number, y: number},
-}
 
 const socket = io("http://127.0.0.1:8080");
 socket.on("connect", () => {
