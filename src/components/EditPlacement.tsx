@@ -33,7 +33,7 @@ function EditPlacement() {
   const [croom_furs, setCroomFurs] = useState(new Map([] as [string, CroomFurniture][]));
   const [output_source, setOutputSource] = useState({id: "-1", index: -1, type: {"kind": "number"}});
 
-  const [isRunMode, setIsRunMode] = useState(false);
+  //const [isRunMode, setIsRunMode] = useState(false);
 
   const [popup, setPopup] = useState({kind: "None"} as Popup);
   
@@ -42,12 +42,7 @@ function EditPlacement() {
     socket.on("update process furs", (process_furs: [string, ProcessFurniture][]) => setProcessFurs(new Map(process_furs)));
     socket.on("update croom furs", (croom_furs: [string, CroomFurniture][]) => setCroomFurs(new Map(croom_furs)));
 
-    socket.on("update output source", (id: string, index: number, type: Type) => {console.log(id, index); setOutputSource({id: id, index: index, type: type})});
-
-    socket.on("run", (room_run_info: RoomRunInfo) => {
-      top_room_run_info = room_run_info;
-      setIsRunMode(true);
-    });
+    socket.on("update output source", (output_source: {id: string, index: number, type: Type}) => {setOutputSource(output_source)});
   }, []);
 
   useEffect(() => {
@@ -119,12 +114,6 @@ function EditPlacement() {
       setTempUpper({isDisplayed: false, id: "-1", index: -1});
     }
   };
-
-  const run_stop_button = () => {
-    if(isRunMode)
-      return <button onClick={() => setIsRunMode(false)}>Stop</button>
-    return <button onClick={() => socket.emit("compile", path)}>Run</button>
-  }
 
   const place_line = (upper_x: number, upper_y: number, lower_id: string, lower_index: number) => {
 
@@ -238,7 +227,7 @@ function EditPlacement() {
   return (
     <>
     	<header style={{display: 'flex', justifyContent: 'space-evenly'}}>
-        { run_stop_button() }
+        <button onClick={() => window.open('/' + path + '/runroom')}>Run</button>
 	    	<button onClick={() => socket.emit("save placement", path)}>Save</button>
       </header>
       <svg width={window.screen.width} height={window.screen.height} xmlns="http://www.w3.org/2000/svg"
@@ -280,11 +269,12 @@ function EditPlacement() {
         </div>
       }
       {
+        /*
         // 実行時
         isRunMode &&
         <div style={{position: 'absolute', border: 'solid', left: 20, top: 40, width: 500, height: 250}}>
           <RunRoom top_room_run_info={top_room_run_info}></RunRoom>
-        </div>
+        </div>*/
       }
     </>
   );

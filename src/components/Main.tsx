@@ -6,6 +6,7 @@ import { EditType } from './EditType';
 import EditPlacement from './EditPlacement';
 import { PathDirectory, Directory } from './Directory';
 import EditProcess from './EditProcess';
+import RunRoom from './RunRoom';
 
 
 export type Type =
@@ -54,6 +55,7 @@ function PageRoute() {
       <Route path=':path/data' element={<EditData />}/>
       <Route path=':path/process' element={<EditProcess />}/>
       <Route path=':path/placement' element={<EditPlacement />}/>
+      <Route path=':path/runroom' element={<RunRoom />}/>
     </Routes>
   );
 }
