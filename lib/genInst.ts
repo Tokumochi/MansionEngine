@@ -118,6 +118,14 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         return false;
     }
 
+    const consume_keyword = (keyword: string) => {
+        if(is_keyword(keyword)) {
+            i++;
+            return true;
+        }
+        return false;
+    }
+
     const is_ident = () => {
         if(is_end()) return undefined;
         const token = tokens[i];
@@ -153,35 +161,30 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         if(is_keyword("if") || is_keyword("while")) {
             const kind = is_keyword("if") ? "IF" : "WHILE";
             i++;
-            if(!is_keyword("(")) return undefined;
-            i++;
+            if(!consume_keyword("(")) return undefined;
             const cond = expr();
             if(cond === undefined) return undefined;
-            if(!is_keyword(")")) return undefined;
-            i++;
+            if(!consume_keyword(")")) return undefined;
             const if_stmt = stmt();
             if(if_stmt === undefined) return undefined;
             return {kind: kind, cond: cond, if: if_stmt};
         }
         // block statement
-        if(is_keyword("{")) {
-            i++;
+        if(consume_keyword("{"))
             return block();
-        }
         // expr statement
         return expr_stmt();
     }
 
     const block = (): StmtInst | undefined => {
         const stmts: StmtInst[] = [];
-        while(is_keyword("\n")) i++;
-        while(!is_keyword("}")) {
+        while(consume_keyword("\n"));
+        while(!consume_keyword("}")) {
             const inst = stmt();
             if(inst === undefined) return undefined;
             stmts.push(inst);
             while(is_keyword("\n")) i++;
         }
-        i++;
         return {kind: "BLOCK", stmts: stmts};
     }
 
@@ -203,8 +206,7 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         const found_var = find_var(var_name)
         if(found_var === undefined) {
             i++;
-            if(!is_keyword("=")) return undefined;
-            i++;
+            if(!consume_keyword("=")) return undefined;
             const value = store();
             if(value === undefined) return undefined;
             return [{kind: "STORE", var_indexes: [{kind: "NUM", num: declare_var(var_name, value[1])}], value: value[0]}, value[1]];
@@ -213,12 +215,11 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         const left = equal();
         if(left === undefined) return undefined;
         let store_kind: StoreKind | undefined = undefined;
-        if(is_keyword("=")) store_kind = "STORE";
-        else if(is_keyword("+=")) store_kind = "ADDSTORE";
-        else if(is_keyword("-=")) store_kind = "SUBSTORE";
+        if(consume_keyword("=")) store_kind = "STORE";
+        else if(consume_keyword("+=")) store_kind = "ADDSTORE";
+        else if(consume_keyword("-=")) store_kind = "SUBSTORE";
 
         if(store_kind === undefined) return left;
-        i++;
         if(left[0].kind !== "LOAD") return undefined;
         const right = store();
         if(right === undefined) return undefined;
@@ -227,10 +228,8 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
             if(!is_same_type(left[1], right[1])) return undefined;
             return [{kind: "STORE", var_indexes: left[0].var_indexes, value: right[0]}, right[1]];
         }
-        if(store_kind === "ADDSTORE") {
-            if(left[1].kind === "array" && is_same_type(left[1].base_type, right[1]))
-                return [{kind: "PUSHSTORE", var_indexes: left[0].var_indexes, value: right[0]}, right[1]]
-        }
+        if(store_kind === "ADDSTORE" && left[1].kind === "array" && is_same_type(left[1].base_type, right[1]))
+            return [{kind: "PUSHSTORE", var_indexes: left[0].var_indexes, value: right[0]}, right[1]]
 
         if(left[1].kind === "number" && right[1].kind === "number")
             return [{kind: store_kind, var_indexes: left[0].var_indexes, value: right[0]}, right[1]]
@@ -242,15 +241,14 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         if(left === undefined) return undefined;
         for(;;) {
             let equal_kind: BinaryKind | undefined = undefined;
-            if(is_keyword("==")) equal_kind = "EQU";
-            else if(is_keyword("!=")) equal_kind = "NEQ";
-            else if(is_keyword("<=")) equal_kind = "ELT";
-            else if(is_keyword(">=")) equal_kind = "EGT";
-            else if(is_keyword("<")) equal_kind = "LT";
-            else if(is_keyword(">")) equal_kind = "GT";
+            if(consume_keyword("==")) equal_kind = "EQU";
+            else if(consume_keyword("!=")) equal_kind = "NEQ";
+            else if(consume_keyword("<=")) equal_kind = "ELT";
+            else if(consume_keyword(">=")) equal_kind = "EGT";
+            else if(consume_keyword("<")) equal_kind = "LT";
+            else if(consume_keyword(">")) equal_kind = "GT";
 
             if(equal_kind === undefined) break;
-            i++;
             const right = add();
             if(right === undefined || left[1].kind !== "number" || right[1].kind !== "number") return undefined;
             left = [{kind: equal_kind, left: left[0], right: right[0]}, {kind: "number"}];
@@ -264,11 +262,10 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         if(left === undefined) return undefined;
         for(;;) {
             let add_kind: BinaryKind | undefined = undefined;
-            if(is_keyword("+")) add_kind = "ADD";
-            else if(is_keyword("-")) add_kind = "SUB"
+            if(consume_keyword("+")) add_kind = "ADD";
+            else if(consume_keyword("-")) add_kind = "SUB"
 
             if(add_kind === undefined) break;
-            i++;
             const right = mul();
             if(right === undefined || left[1].kind !== "number" || right[1].kind !== "number") return undefined;
             left = [{kind: add_kind, left: left[0], right: right[0]}, {kind: "number"}];
@@ -282,11 +279,10 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         if(left === undefined) return undefined;
         for(;;) {
             let mul_kind: BinaryKind | undefined = undefined;
-            if(is_keyword("*")) mul_kind = "MUL";
-            else if(is_keyword("/")) mul_kind = "DIV";
+            if(consume_keyword("*")) mul_kind = "MUL";
+            else if(consume_keyword("/")) mul_kind = "DIV";
 
             if(mul_kind === undefined) break;
-            i++;
             const right = primary();
             if(right === undefined || left[1].kind !== "number" || right[1].kind !== "number") return undefined;
             left = [{kind: mul_kind, left: left[0], right: right[0]}, {kind: "number"}];
@@ -296,60 +292,49 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
     }
         
     const primary = (): [ExprInst, Type] | undefined => {
-        if(is_keyword("__print__")) {
-            i++;
+        if(consume_keyword("__print__")) {
             const args = func_args();
             if(args === undefined || args.length !== 1) return undefined;
             return [{kind: "PRINT", value: args[0][0]}, {kind: "obj", pros: []}];
         }
 
-        if(is_keyword("__draw_circle__")) {
-            i++;
+        if(consume_keyword("__draw_circle__")) {
             const args = func_args();
             if(args === undefined || args.length !== 3 || args[0][1].kind !== "number" || args[1][1].kind !== "number" || args[2][1].kind !== "number") return undefined;
             return [{kind: "DRAWCIRCLE", radius: args[0][0], x: args[1][0], y: args[2][0]}, {kind: "obj", pros: []}];
         }
 
         for(const pressed_kind of ["W", "A", "S", "D"] as PressedKind[]) {
-            if(is_keyword("__" + pressed_kind + "__")) {
-                i++;
+            if(consume_keyword("__" + pressed_kind + "__")) {
                 const args = func_args();
                 if(args === undefined || args.length !== 0) return undefined;
                 return [{kind: pressed_kind}, {kind: "number"}]
             }
         }
 
-        if(is_keyword("(")) {
-            i++;
+        if(consume_keyword("(")) {
             const inst = store();
             if(inst === undefined) return undefined;
-            if(is_keyword(")")) {
-                i++;
-                return inst;
-            }
+            if(consume_keyword(")")) return inst;
             return undefined;
         }
 
-        if(is_keyword("{")) {
-            i++;
+        if(consume_keyword("{")) {
             const pros: Map<string, [ExprInst, Type]> = new Map();
-            while(!is_keyword("}")) {
+            while(!consume_keyword("}")) {
                 const key_name = is_ident();
                 if(key_name === undefined) return undefined;
                 if(pros.has(key_name)) return undefined;
                 i++;
-                if(is_keyword(":")) {
-                    i++;
-                    const value = store();
-                    if(value === undefined) return undefined;
-                    if(is_keyword(",")) i++;
-                    else if(!is_keyword("}")) return undefined;
-                    pros.set(key_name, value);
-                    continue;
-                }
-                return undefined;
+
+                if(!consume_keyword(":")) return undefined;
+                const value = store();
+                if(value === undefined) return undefined;
+                if(is_keyword(",")) i++;
+                else if(!is_keyword("}")) return undefined;
+                pros.set(key_name, value);
+                continue;
             }
-            i++;
             const pro_values: ExprInst[] = [];
             const pro_types: [string, Type][] = [];
             pros.forEach((value, key_name) => {
@@ -368,9 +353,8 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
             const var_indexes: ExprInst[] = [{kind: "NUM", num: found_var.index}];
             let var_type = found_var.type;
             load: for(;;) {
-                if(is_keyword(".")) {
+                if(consume_keyword(".")) {
                     if(var_type.kind !== 'obj') return undefined;
-                    i++;
                     const pro_name = is_ident();
                     if(pro_name === undefined) return undefined;
                     i++;
@@ -383,15 +367,13 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
                     }
                     return undefined;
                 }
-                if(is_keyword("[")) {
+                if(consume_keyword("[")) {
                     if(var_type.kind !== 'array') return undefined;
-                    i++;
                     const array_index = store();
                     if(array_index === undefined || array_index[1].kind !== "number") return undefined;
                     var_indexes.push(array_index[0]);
                     var_type = array_index[1];
-                    if(!is_keyword("]")) return undefined;
-                    i++;
+                    if(!consume_keyword("]")) return undefined;
                     continue;
                 }
                 break;
@@ -409,21 +391,17 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
     }
     
     const func_args = (): [ExprInst, Type][] | undefined => {
-        if(is_keyword("(")) {
-            i++;
+        if(consume_keyword("(")) {
             var is_first = true;
             const args: [ExprInst, Type][] = [];
-            while(!is_keyword(")")) {
+            while(!consume_keyword(")")) {
                 if(is_first) is_first = false;
-                else {
-                    if(!is_keyword(",")) return undefined;
-                    i++;
-                }
+                else if(!consume_keyword(",")) return undefined;
+
                 const arg = store();
                 if(arg === undefined) return undefined;
                 args.push(arg);
             }
-            i++;
             return args;
         }
         return undefined;
