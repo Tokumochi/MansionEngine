@@ -297,7 +297,7 @@ io.on('connection', (socket: Socket) => {
             place.output_source.id = lower_id;
             place.output_source.index = lower_index;
             place.output_source.type = lower_type;
-            io.in(room_path).emit("update output source", lower_id, lower_index, lower_type);
+            io.in(room_path).emit("update output source", place.output_source);
             return;
         }
 
@@ -394,10 +394,6 @@ io.on('connection', (socket: Socket) => {
         place.croom_furs.set(new_id, new_croom_fur);
         io.in(room_path).emit("update croom fur", new_id, new_croom_fur);
     });
-    socket.on("compile", (room_path: string) => {
-        const room_run_info = genRoomRunInfo(room_path);
-        io.to(socket.id).emit("run", room_run_info);
-    });
     socket.on("save placement", (room_path: string) => {
         const place = get_place(room_path);
         if(place === undefined) return;
@@ -413,6 +409,13 @@ io.on('connection', (socket: Socket) => {
             croom_furs: Array.from(place.croom_furs),
             output_source: place.output_source,
         }));
+    });
+
+
+    // ランルームページ
+    socket.on("compile", (room_path: string) => {
+        const top_room_run_info = genRoomRunInfo(room_path);
+        io.to(socket.id).emit("run", top_room_run_info);
     });
 
 

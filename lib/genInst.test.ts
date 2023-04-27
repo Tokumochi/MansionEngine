@@ -165,6 +165,45 @@ const inst6: StmtInst = {
     ]
 }
 
+const process7: Process = {
+    params_str: "{before: {\n    x: number,\n    y: number,\n    radius: number,\n  }\n}",
+    rets_str: "{after: {\n    x: number,\n    y: number,\n    radius: number,\n  }\n}",
+    code: "after = { x: 0, y: 0, radius: 0 }\nif(__W__()) after.y -= 1\nif(__S__()) after.y += 1\nif(__A__()) after.x = before.x - 1\nif(__D__()) after.x = before.x + 1"
+}
+const inst7: StmtInst = {
+    kind: "BLOCK", stmts: [
+        {kind: "EXPR", expr: {
+            kind: "STORE", var_indexes: [{kind: "NUM", num: 1}], value: {
+                kind: "OBJ", pro_values: [{kind: "NUM", num: 0}, {kind: "NUM", num: 0}, {kind: "NUM", num: 0}]
+            }
+        }},
+        {kind: "IF", cond: {kind: "W"}, if: { kind: "EXPR", expr:
+            {kind: "SUBSTORE", var_indexes: [{kind: "NUM", num: 1}, {kind: "NUM", num: 1}],
+                value: {kind: "NUM", num: 1},
+            }
+        }},
+        {kind: "IF", cond: {kind: "S"}, if: { kind: "EXPR", expr:
+            {kind: "ADDSTORE", var_indexes: [{kind: "NUM", num: 1}, {kind: "NUM", num: 1}],
+                value: {kind: "NUM", num: 1},
+            }
+        }},
+        {kind: "IF", cond: {kind: "A"}, if: { kind: "EXPR", expr:
+            {kind: "STORE", var_indexes: [{kind: "NUM", num: 1}, {kind: "NUM", num: 0}], value: {
+                kind: "SUB",
+                left: {kind: "LOAD", var_indexes: [{kind: "NUM", num: 0}, {kind: "NUM", num: 0}]},
+                right: {kind: "NUM", num: 1},
+            }}
+        }},
+        {kind: "IF", cond: {kind: "D"}, if: { kind: "EXPR", expr:
+            {kind: "STORE", var_indexes: [{kind: "NUM", num: 1}, {kind: "NUM", num: 0}], value: {
+                kind: "ADD",
+                left: {kind: "LOAD", var_indexes: [{kind: "NUM", num: 0}, {kind: "NUM", num: 0}]},
+                right: {kind: "NUM", num: 1},
+            }}
+        }},
+    ]
+}
+
 
 test('process1', () => {
     expect(genProcessInst(process1)).toEqual(inst1);
@@ -183,4 +222,7 @@ test('process5', () => {
 });
 test('process6', () => {
     expect(genProcessInst(process6)).toEqual(inst6);
+});
+test('process7', () => {
+    expect(genProcessInst(process7)).toEqual(inst7);
 });
