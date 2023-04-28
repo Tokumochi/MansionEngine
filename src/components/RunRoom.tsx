@@ -13,9 +13,10 @@ type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
             {kind: StoreKind, var_indexes: ExprInst[], value: ExprInst} |
             {kind: BinaryKind, left: ExprInst, right: ExprInst} |
             {kind: "OBJ", pro_values: ExprInst[]} |
+            {kind: "STR", str: string} |
             {kind: "NUM", num: number} |
             {kind: "PRINT", value: ExprInst} |
-            {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst} |
+            {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst, color: ExprInst} |
             {kind: PressedKind}
 
 export type StmtInst = {kind: "EXPR", expr: ExprInst} |
@@ -75,8 +76,8 @@ function RunRoom() {
 
 			if(ctx === null) return;
 
-			const draw_circle = (x: number, y: number, radius: number) => {
-				ctx.fillStyle = "lightskyblue";
+			const draw_circle = (x: number, y: number, radius: number, color: string) => {
+				ctx.fillStyle = color;
 				ctx.beginPath();
 				ctx.arc(x, y, radius, 0, Math.PI * 2, true);
 				ctx.closePath();
@@ -145,7 +146,8 @@ function RunRoom() {
 
 							return value; 
 						}
-						case "OBJ": return expr_inst.pro_values;
+						case "OBJ": return expr_inst.pro_values.map(pro_value => run_expr(pro_value));
+						case "STR": return expr_inst.str;
 						case "NUM": return expr_inst.num;
 						case "PRINT": {
 							const value = run_expr(expr_inst.value);
@@ -153,14 +155,16 @@ function RunRoom() {
 							console.log(value);
 							return;
 						}
-						case "DRAWCIRCLE":
+						case "DRAWCIRCLE": {
 							const radius = run_expr(expr_inst.radius);
 							const x = run_expr(expr_inst.x);
 							const y = run_expr(expr_inst.y);
-							if(radius === undefined || x === undefined || y === undefined) return undefined;
+							const color = run_expr(expr_inst.color);
+							if(radius === undefined || x === undefined || y === undefined || color === undefined) return undefined;
 							if(typeof x !== 'number' || typeof y !== 'number' || typeof radius !== 'number') return undefined;
-							draw_circle(x, y, radius);
+							draw_circle(x, y, radius, color);
 							return;
+						}
 						case "W": return is_W_pressed;
 						case "A": return is_A_pressed;
 						case "S": return is_S_pressed;
