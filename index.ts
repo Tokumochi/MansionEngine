@@ -193,10 +193,11 @@ io.on('connection', (socket: Socket) => {
                 fs.rmdirSync(real_path + '/' + target_name);
                 break;
             case "room":
-                if(!fs.existsSync(real_path + '/' + target_name + '.room')) {
+                if(!fs.existsSync(real_path + '/' + target_name + '.room') || !fs.existsSync(real_path + '/' + target_name + '.room/placement.json') ) {
                     console.log("What's happening!?")
                     return;
                 }
+                fs.unlinkSync(real_path + '/' + target_name + '.room/placement.json');
                 fs.rmdirSync(real_path + '/' + target_name + '.room');
                 break;
             default:

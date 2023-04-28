@@ -19,7 +19,7 @@ const inst1: StmtInst = {
 const process2: Process = {
     params_str: "{arg: number}",
     rets_str: "{ret: number}",
-    code: "abc = 3 * (arg + 2 / 3)\n\n\n__print__(abc) \n__draw_circle__(abc + 300, 200, 400)\n ret = abc - 4"
+    code: "abc = 3 * (arg + 2 / 3)\n\n\n__print__(abc) \n__draw_circle__(abc + 300, 200, 400, \"red\")\n ret = abc - 4"
 }
 const inst2: StmtInst = {
     kind: "BLOCK", stmts: [
@@ -46,7 +46,8 @@ const inst2: StmtInst = {
                     right: {kind: "NUM", num: 300}
                 },
                 x: {kind: "NUM", num: 200},
-                y: {kind: "NUM", num: 400}
+                y: {kind: "NUM", num: 400},
+                color: {kind: "STR", str: "red"}
             },
         },
         {kind: "EXPR", expr:
@@ -204,6 +205,26 @@ const inst7: StmtInst = {
     ]
 }
 
+const process8: Process = {
+    params_str: "{player: {x: number, y: number, radius: number,}, bullets: {next: number, num: number, pos: {alive: number, x: number, y: number}[]},}",
+    rets_str: "{}",
+    code: "bullets.pos[bullets.next] = {alive: 1, x: player.x, y: player.y - 15}"
+}
+const inst8: StmtInst = {
+    kind: "BLOCK", stmts: [
+        {kind: "EXPR", expr: {
+            kind: "STORE", var_indexes: [{kind: "NUM", num: 1}, {kind: "NUM", num: 2}, {kind: "LOAD", var_indexes: [{kind: "NUM", num: 1}, {kind: "NUM", num: 0}]}],
+            value: {kind: "OBJ", pro_values: [
+                {kind: "NUM", num: 1},
+                {kind: "LOAD", var_indexes: [{kind: "NUM", num: 0}, {kind: "NUM", num: 0}]},
+                {kind: "SUB",
+                    left: {kind: "LOAD", var_indexes: [{kind: "NUM", num: 0}, {kind: "NUM", num: 1}]},
+                    right: {kind: "NUM", num: 15}
+                }
+            ]}
+        }},
+    ]
+}
 
 test('process1', () => {
     expect(genProcessInst(process1)).toEqual(inst1);
@@ -225,4 +246,7 @@ test('process6', () => {
 });
 test('process7', () => {
     expect(genProcessInst(process7)).toEqual(inst7);
+});
+test('process8', () => {
+    expect(genProcessInst(process8)).toEqual(inst8);
 });

@@ -3,6 +3,7 @@ import { Process } from "./processManager"
 
 type Token = {kind: "KEYWORD", keyword: string} |
              {kind: "IDENT", ident: string} |
+             {kind: "STR", str: string} |
              {kind: "NUM", num: number}
 
 type StoreKind = "STORE" | "ADDSTORE" | "SUBSTORE" | "PUSHSTORE"
@@ -13,9 +14,10 @@ type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
             {kind: StoreKind, var_indexes: ExprInst[], value: ExprInst} |
             {kind: BinaryKind, left: ExprInst, right: ExprInst} |
             {kind: "OBJ", pro_values: ExprInst[]} |
+            {kind: "STR", str: string} |
             {kind: "NUM", num: number} |
             {kind: "PRINT", value: ExprInst} |
-            {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst} |
+            {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst, color: ExprInst} |
             {kind: PressedKind}
 
 export type StmtInst = {kind: "EXPR", expr: ExprInst} |
@@ -60,14 +62,14 @@ const Tokenize = (code: string) => {
     const is_num = (char: string) => ('0' <= char && char <= '9');
     const is_alpha = (char: string) => ('a' <= char && char <= 'z') || ('A' <= char && char <= 'Z');
 
-    content: for(var i = 0; i < code.length; i++) {
+    content: for(let i = 0; i < code.length; i++) {
         //space
         if(code.charAt(i) === ' ') continue;
 
         // keyword
         keyword: for(const keyword of keywords) {
             if(i + keyword.length > code.length) continue;
-            for(var j = 0; j < keyword.length; j++) {
+            for(let j = 0; j < keyword.length; j++) {
                 if(code.charAt(i + j) !== keyword.charAt(j)) continue keyword;
             }
             tokens.push({kind: "KEYWORD", keyword: keyword});
@@ -77,7 +79,7 @@ const Tokenize = (code: string) => {
 
         // identifier
         if(is_alpha(code.charAt(i))) {
-            var ident = code.charAt(i);
+            let ident = code.charAt(i);
             while(i + 1 < code.length && (is_alpha(code.charAt(i + 1)) || is_num(code.charAt(i + 1)))) {
                 ident += code.charAt(++i);
             }
@@ -85,10 +87,22 @@ const Tokenize = (code: string) => {
             continue;
         }
 
+        // string
+        if(code.charAt(i) === '"') {
+            let str = "";
+            while(true) {
+                if(code.length <= ++i) return undefined;
+                if(code.charAt(i) === '"') break;
+                str += code.charAt(i);
+            }
+            tokens.push({kind: "STR", str: str});
+            continue;
+        }
+
         // number
         if(is_num(code.charAt(i))) {
-            var num = code.charAt(i);
-            while(is_num(code.charAt(i + 1)) && i + 1 < code.length) {
+            let num = code.charAt(i);
+            while(i + 1 < code.length && is_num(code.charAt(i + 1))) {
                 num += code.charAt(++i);
             }
             tokens.push({kind: "NUM", num: parseInt(num)});
@@ -110,12 +124,7 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
     const is_keyword = (keyword: string) => {
         if(is_end()) return false;
         const token = tokens[i];
-        if(token.kind === "KEYWORD") {
-            if(token.keyword === keyword) {
-                return true;
-            }
-        }
-        return false;
+        return token.kind === "KEYWORD" && token.keyword === keyword;
     }
 
     const consume_keyword = (keyword: string) => {
@@ -129,18 +138,21 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
     const is_ident = () => {
         if(is_end()) return undefined;
         const token = tokens[i];
-        if(token.kind === "IDENT") {
-            return token.ident;
-        }
+        if(token.kind === "IDENT") return token.ident;
+        return undefined;
+    }
+
+    const is_str = () => {
+        if(is_end()) return undefined;
+        const token = tokens[i];
+        if(token.kind === "STR") return token.str;
         return undefined;
     }
 
     const is_num = () => {
         if(is_end()) return undefined;
         const token = tokens[i];
-        if(token.kind === "NUM") {
-            return token.num;
-        }
+        if(token.kind === "NUM") return token.num;
         return undefined;
     }
 
@@ -300,8 +312,8 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
 
         if(consume_keyword("__draw_circle__")) {
             const args = func_args();
-            if(args === undefined || args.length !== 3 || args[0][1].kind !== "number" || args[1][1].kind !== "number" || args[2][1].kind !== "number") return undefined;
-            return [{kind: "DRAWCIRCLE", radius: args[0][0], x: args[1][0], y: args[2][0]}, {kind: "obj", pros: []}];
+            if(args === undefined || args.length !== 4 || args[0][1].kind !== "number" || args[1][1].kind !== "number" || args[2][1].kind !== "number" || args[3][1].kind !== "string") return undefined;
+            return [{kind: "DRAWCIRCLE", radius: args[0][0], x: args[1][0], y: args[2][0], color: args[3][0]}, {kind: "obj", pros: []}];
         }
 
         for(const pressed_kind of ["W", "A", "S", "D"] as PressedKind[]) {
@@ -372,13 +384,19 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
                     const array_index = store();
                     if(array_index === undefined || array_index[1].kind !== "number") return undefined;
                     var_indexes.push(array_index[0]);
-                    var_type = array_index[1];
+                    var_type = var_type.base_type;
                     if(!consume_keyword("]")) return undefined;
                     continue;
                 }
                 break;
             }
             return [{kind: "LOAD", var_indexes: var_indexes}, var_type];
+        }
+
+        const str = is_str();
+        if(str !== undefined) {
+            i++;
+            return [{kind: "STR", str: str}, {kind: "string"}];
         }
 
         const num = is_num();
