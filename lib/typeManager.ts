@@ -67,9 +67,9 @@ export const type_str_to_type = (type_str: string): Type | undefined => {
         }
 
         // normal token
-        if(is_alpha(type_str.charAt(i))) {
-            var normal = type_str.charAt(i);
-            while(i + 1 < type_str.length && (is_alpha(type_str.charAt(i + 1)) || is_num(type_str.charAt(i + 1)))) {
+        if(is_alpha(type_str.charAt(i)) || type_str.charAt(i) === '_') {
+            let normal = type_str.charAt(i);
+            while(i + 1 < type_str.length && (is_alpha(type_str.charAt(i + 1)) || is_num(type_str.charAt(i + 1)) || type_str.charAt(i + 1) === '_')) {
                 normal += type_str.charAt(++i);
             }
             tokens.push(normal);
@@ -83,7 +83,7 @@ export const type_str_to_type = (type_str: string): Type | undefined => {
 
     const is_end = () => (tokens.length <= i);
     const is_keyword = (keyword: string) => (!is_end() && tokens[i] === keyword);
-    const get_ident = () => ((!is_end() && is_alpha(tokens[i].charAt(0))) ? tokens[i] : undefined);
+    const get_ident = () => ((!is_end() && (is_alpha(tokens[i].charAt(0)) || tokens[i].charAt(0) === '_')) ? tokens[i] : undefined);
 
     const expr = (): Type | undefined => {
         const expr = array();

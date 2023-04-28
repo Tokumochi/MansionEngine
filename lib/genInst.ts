@@ -8,7 +8,7 @@ type Token = {kind: "KEYWORD", keyword: string} |
 
 type StoreKind = "STORE" | "ADDSTORE" | "SUBSTORE" | "PUSHSTORE"
 type BinaryKind = "EQU" | "NEQ" | "ELT" | "EGT" | "LT" | "GT" | "ADD" | "SUB" | "MUL" | "DIV"
-type PressedKind = "W" | "A" | "S" | "D"
+type PressedKind = "W" | "A" | "S" | "D" | "SPACE"
 
 type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
             {kind: StoreKind, var_indexes: ExprInst[], value: ExprInst} |
@@ -57,7 +57,13 @@ export const genProcessInst = (process: Process) => {
 const Tokenize = (code: string) => {
     const tokens: Token[] = [];
 
-    const keywords = ["if", "while", "__print__", "__draw_circle__", "__W__", "__A__", "__S__", "__D__", "==", "!=", "<=", ">=", "+=", "-=", "<", ">", "+", "-", "*", "/", "=", "(", ")", "{", "}", "[", "]", ":", ",", ".", "\n"];
+    const keywords = ["__print__", "__draw_circle__",
+                      "__W__", "__A__", "__S__", "__D__", "__SPACE__",
+                      "if", "while",
+                      "==", "!=", "<=", ">=", "+=", "-=",
+                      "<", ">", "+", "-", "*", "/", "=",
+                      "(", ")", "{", "}", "[", "]",
+                      ":", ",", ".", "\n"];
 
     const is_num = (char: string) => ('0' <= char && char <= '9');
     const is_alpha = (char: string) => ('a' <= char && char <= 'z') || ('A' <= char && char <= 'Z');
@@ -78,9 +84,9 @@ const Tokenize = (code: string) => {
         }
 
         // identifier
-        if(is_alpha(code.charAt(i))) {
+        if(is_alpha(code.charAt(i)) || code.charAt(i) === '_') {
             let ident = code.charAt(i);
-            while(i + 1 < code.length && (is_alpha(code.charAt(i + 1)) || is_num(code.charAt(i + 1)))) {
+            while(i + 1 < code.length && (is_alpha(code.charAt(i + 1)) || is_num(code.charAt(i + 1)) || code.charAt(i + 1) === '_')) {
                 ident += code.charAt(++i);
             }
             tokens.push({kind: "IDENT", ident: ident});
@@ -169,6 +175,7 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
     }
 
     const stmt = (): StmtInst | undefined => {
+        while(consume_keyword("\n"));
         // if | while statement
         if(is_keyword("if") || is_keyword("while")) {
             const kind = is_keyword("if") ? "IF" : "WHILE";
@@ -195,7 +202,7 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
             const inst = stmt();
             if(inst === undefined) return undefined;
             stmts.push(inst);
-            while(is_keyword("\n")) i++;
+            while(consume_keyword("\n"));
         }
         return {kind: "BLOCK", stmts: stmts};
     }
@@ -316,7 +323,7 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
             return [{kind: "DRAWCIRCLE", radius: args[0][0], x: args[1][0], y: args[2][0], color: args[3][0]}, {kind: "obj", pros: []}];
         }
 
-        for(const pressed_kind of ["W", "A", "S", "D"] as PressedKind[]) {
+        for(const pressed_kind of ["W", "A", "S", "D", "SPACE"] as PressedKind[]) {
             if(consume_keyword("__" + pressed_kind + "__")) {
                 const args = func_args();
                 if(args === undefined || args.length !== 0) return undefined;

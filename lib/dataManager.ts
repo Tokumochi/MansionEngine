@@ -72,9 +72,9 @@ export const data_str_to_type_and_data = (data_str: string): [Type, any] | undef
         }
 
         // identifier
-        if(is_alpha(data_str.charAt(i))) {
-            var ident = data_str.charAt(i);
-            while(i + 1 < data_str.length && (is_alpha(data_str.charAt(i + 1)) || is_num(data_str.charAt(i + 1)))) {
+        if(is_alpha(data_str.charAt(i)) || data_str.charAt(i) === '_') {
+            let ident = data_str.charAt(i);
+            while(i + 1 < data_str.length && (is_alpha(data_str.charAt(i + 1)) || is_num(data_str.charAt(i + 1)) || data_str.charAt(i + 1) === '_')) {
                 ident += data_str.charAt(++i);
             }
             tokens.push({kind: "IDENT", ident: ident});
