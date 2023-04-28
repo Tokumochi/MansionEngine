@@ -7,7 +7,7 @@ import { Type, DataFurniture, ProcessFurniture, CroomFurniture } from './Main';
 
 type StoreKind = "STORE" | "ADDSTORE" | "SUBSTORE" | "PUSHSTORE"
 type BinaryKind = "EQU" | "NEQ" | "ELT" | "EGT" | "LT" | "GT" | "ADD" | "SUB" | "MUL" | "DIV"
-type PressedKind = "W" | "A" | "S" | "D"
+type PressedKind = "W" | "A" | "S" | "D" | "SPACE"
 
 type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
             {kind: StoreKind, var_indexes: ExprInst[], value: ExprInst} |
@@ -45,18 +45,21 @@ let is_W_pressed = 0;
 let is_A_pressed = 0;
 let is_S_pressed = 0;
 let is_D_pressed = 0;
+let is_space_pressed = 0;
 
 document.onkeydown = (e) => {
 	if(e.code === "KeyW") is_W_pressed = 1;
 	if(e.code === "KeyA") is_A_pressed = 1;
 	if(e.code === "KeyS") is_S_pressed = 1;
 	if(e.code === "KeyD") is_D_pressed = 1;
+	if(e.code === "Space") is_space_pressed = 1;
 };
 document.onkeyup = (e) => {
 	if(e.code === "KeyW") is_W_pressed = 0;
 	if(e.code === "KeyA") is_A_pressed = 0;
 	if(e.code === "KeyS") is_S_pressed = 0;
 	if(e.code === "KeyD") is_D_pressed = 0;
+	if(e.code === "Space") is_space_pressed = 0;
 };
 
 function RunRoom() {
@@ -169,6 +172,7 @@ function RunRoom() {
 						case "A": return is_A_pressed;
 						case "S": return is_S_pressed;
 						case "D": return is_D_pressed;
+						case "SPACE": return is_space_pressed;
 					}
 
 					const left = run_expr(expr_inst.left);
