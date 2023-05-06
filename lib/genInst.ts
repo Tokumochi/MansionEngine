@@ -1,28 +1,50 @@
 import { is_same_type, Type, type_str_to_type } from "./typeManager";
 import { Process } from "./processManager"
 
-type Token = {kind: "KEYWORD", keyword: string} |
-             {kind: "IDENT", ident: string} |
-             {kind: "STR", str: string} |
-             {kind: "NUM", num: number}
+type Token = ({kind: "KEYWORD", keyword: string} |
+              {kind: "IDENT", ident: string} |
+              {kind: "STR", str: string} |
+              {kind: "NUM", num: number}) &
+              {line_num: number, col_num: number}
 
 type StoreKind = "STORE" | "ADDSTORE" | "SUBSTORE" | "PUSHSTORE"
 type BinaryKind = "EQU" | "NEQ" | "ELT" | "EGT" | "LT" | "GT" | "ADD" | "SUB" | "MUL" | "DIV"
 type PressedKind = "W" | "A" | "S" | "D" | "SPACE"
 
 type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
-            {kind: StoreKind, var_indexes: ExprInst[], value: ExprInst} |
-            {kind: BinaryKind, left: ExprInst, right: ExprInst} |
-            {kind: "OBJ", pro_values: ExprInst[]} |
-            {kind: "STR", str: string} |
-            {kind: "NUM", num: number} |
-            {kind: "PRINT", value: ExprInst} |
-            {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst, color: ExprInst} |
-            {kind: PressedKind}
+                {kind: StoreKind, var_indexes: ExprInst[], value: ExprInst} |
+                {kind: BinaryKind, left: ExprInst, right: ExprInst} |
+                {kind: "OBJ", pro_values: ExprInst[]} |
+                {kind: "STR", str: string} |
+                {kind: "NUM", num: number} |
+                {kind: "PRINT", value: ExprInst} |
+                {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst, color: ExprInst} |
+                {kind: PressedKind}
 
 export type StmtInst = {kind: "EXPR", expr: ExprInst} |
-            {kind: "BLOCK", stmts: StmtInst[]} |
-            {kind: "IF" | "WHILE", cond: ExprInst, if: StmtInst}
+                       {kind: "BLOCK", stmts: StmtInst[]} |
+                       {kind: "IF" | "WHILE", cond: ExprInst, if: StmtInst}
+
+type ErrorResult = {error: true, line_num: number, col_num: number, message: string}
+type TokenizeResult = {error: false, tokens: Token[]} | ErrorResult
+type ExprResult = {error: false, expr: ExprInst, type: Type} | ErrorResult
+type StmtResult = {error: false, stmt: StmtInst} | ErrorResult
+
+
+export const alpha_keywords = ["__print__", "__draw_circle__",
+                               "__W__", "__A__", "__S__", "__D__", "__SPACE__",
+                               "if", "while"];
+
+const sign_keywords = ["==", "!=", "<=", ">=", "+=", "-=",
+                       "<", ">", "+", "-", "*", "/", "=",
+                       "(", ")", "{", "}", "[", "]",
+                       ":", ",", "."];
+
+const LogErrorMessage = (code: string, line_num: number, col_num: number, message: string) => {
+    console.log((line_num + 1) + ":" + (col_num + 1));
+    console.log(code.split('\n')[line_num]);
+    console.log(' '.repeat(col_num) + '^ ' + message);
+}
 
 export const genProcessInst = (process: Process) => {
     const declared_vars: {name: string, type: Type}[] = [];
@@ -48,37 +70,47 @@ export const genProcessInst = (process: Process) => {
     for(const pro of param_obj_type.pros) declared_vars.push({name: pro[0], type: pro[1]});
     for(const pro of ret_obj_type.pros) declared_vars.push({name: pro[0], type: pro[1]});
 
-    const tokens = Tokenize(process.code);
-    if(tokens === undefined) return undefined;
+    const tokenize_result = Tokenize(process.code);
+    if(tokenize_result.error) {
+        LogErrorMessage(process.code, tokenize_result.line_num, tokenize_result.col_num, tokenize_result.message);
+        return undefined;
+    }
 
-    return Parse(tokens, declared_vars);
+    const top_stmt = Parse(tokenize_result.tokens, declared_vars);
+    if(top_stmt.error) {
+        LogErrorMessage(process.code, top_stmt.line_num, top_stmt.col_num, top_stmt.message);
+        return undefined;
+    }
+    return top_stmt;
 }
 
-const Tokenize = (code: string) => {
+const Tokenize = (code: string): TokenizeResult => {
     const tokens: Token[] = [];
-
-    const keywords = ["__print__", "__draw_circle__",
-                      "__W__", "__A__", "__S__", "__D__", "__SPACE__",
-                      "if", "while",
-                      "==", "!=", "<=", ">=", "+=", "-=",
-                      "<", ">", "+", "-", "*", "/", "=",
-                      "(", ")", "{", "}", "[", "]",
-                      ":", ",", ".", "\n"];
 
     const is_num = (char: string) => ('0' <= char && char <= '9');
     const is_alpha = (char: string) => ('a' <= char && char <= 'z') || ('A' <= char && char <= 'Z');
 
+    let line_num = 0;
+    let len_upto_pre_line = 0;
+
     content: for(let i = 0; i < code.length; i++) {
-        //space
+        // space
         if(code.charAt(i) === ' ') continue;
 
-        // keyword
-        keyword: for(const keyword of keywords) {
+        // \n
+        if(code.charAt(i) === '\n') {
+            tokens.push({kind: "KEYWORD", keyword: '\n', line_num: line_num++, col_num: i - len_upto_pre_line});
+            len_upto_pre_line = i + 1;
+            continue;
+        }
+
+        // keyword(sign)
+        keyword: for(const keyword of sign_keywords) {
             if(i + keyword.length > code.length) continue;
             for(let j = 0; j < keyword.length; j++) {
                 if(code.charAt(i + j) !== keyword.charAt(j)) continue keyword;
             }
-            tokens.push({kind: "KEYWORD", keyword: keyword});
+            tokens.push({kind: "KEYWORD", keyword: keyword, line_num: line_num, col_num: i - len_upto_pre_line});
             i += keyword.length - 1;
             continue content;
         }
@@ -86,43 +118,56 @@ const Tokenize = (code: string) => {
         // identifier
         if(is_alpha(code.charAt(i)) || code.charAt(i) === '_') {
             let ident = code.charAt(i);
-            while(i + 1 < code.length && (is_alpha(code.charAt(i + 1)) || is_num(code.charAt(i + 1)) || code.charAt(i + 1) === '_')) {
-                ident += code.charAt(++i);
+            let j = 1;
+            while(i + j < code.length && (is_alpha(code.charAt(i + j)) || is_num(code.charAt(i + j)) || code.charAt(i + j) === '_')) {
+                ident += code.charAt(i + j++);
             }
-            tokens.push({kind: "IDENT", ident: ident});
+            // keyword(alpha)
+            for(const keyword of alpha_keywords) {
+                if(ident === keyword) {
+                    tokens.push({kind: "KEYWORD", keyword: keyword, line_num: line_num, col_num: i - len_upto_pre_line});
+                    i += j - 1;
+                    continue content;
+                }
+            }
+            tokens.push({kind: "IDENT", ident: ident, line_num: line_num, col_num: i - len_upto_pre_line});
+            i += j - 1;
             continue;
         }
 
         // string
         if(code.charAt(i) === '"') {
             let str = "";
+            let j = 0;
             while(true) {
-                if(code.length <= ++i) return undefined;
-                if(code.charAt(i) === '"') break;
-                str += code.charAt(i);
+                if(code.length <= i + ++j) return {error: true, line_num: line_num, col_num: i + j - len_upto_pre_line, message: 'expected \'"\''};
+                if(code.charAt(i + j) === '"') break;
+                str += code.charAt(i + j);
             }
-            tokens.push({kind: "STR", str: str});
+            tokens.push({kind: "STR", str: str, line_num: line_num, col_num: i - len_upto_pre_line});
+            i += j;
             continue;
         }
 
         // number
         if(is_num(code.charAt(i))) {
             let num = code.charAt(i);
-            while(i + 1 < code.length && is_num(code.charAt(i + 1))) {
-                num += code.charAt(++i);
+            let j = 1;
+            while(i + j < code.length && is_num(code.charAt(i + j))) {
+                num += code.charAt(i + j++);
             }
-            tokens.push({kind: "NUM", num: parseInt(num)});
+            tokens.push({kind: "NUM", num: parseInt(num), line_num: line_num, col_num: i - len_upto_pre_line});
+            i += j - 1;
             continue;
         }
 
-        return undefined;
+        return {error: true, line_num: line_num, col_num: i - len_upto_pre_line, message: 'unexpected char'};
     }
 
-    tokens.push({kind: "KEYWORD", keyword: "}"});
-    return tokens;
+    return {error: false, tokens: tokens};
 }
 
-const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => {
+const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]): StmtResult => {
     var i = 0;
 
     const is_end = () => (tokens.length <= i);
@@ -174,19 +219,28 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         return undefined;
     }
 
-    const stmt = (): StmtInst | undefined => {
+    const gen_error_result = (message: string, token_offset: number = 0): ErrorResult => {
+        return {
+            error: true,
+            line_num: tokens[i + token_offset].line_num,
+            col_num: tokens[i + token_offset].col_num,
+            message: message
+        };
+    }
+
+    const stmt = (): StmtResult => {
         while(consume_keyword("\n"));
         // if | while statement
         if(is_keyword("if") || is_keyword("while")) {
             const kind = is_keyword("if") ? "IF" : "WHILE";
             i++;
-            if(!consume_keyword("(")) return undefined;
+            if(!consume_keyword("(")) return gen_error_result("expected '('");
             const cond = expr();
-            if(cond === undefined) return undefined;
-            if(!consume_keyword(")")) return undefined;
+            if(cond.error) return cond;
+            if(!consume_keyword(")")) return gen_error_result("expected ')'");
             const if_stmt = stmt();
-            if(if_stmt === undefined) return undefined;
-            return {kind: kind, cond: cond, if: if_stmt};
+            if(if_stmt.error) return if_stmt;
+            return {error: false, stmt: {kind: kind, cond: cond.expr, if: if_stmt.stmt}};
         }
         // block statement
         if(consume_keyword("{"))
@@ -195,69 +249,68 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
         return expr_stmt();
     }
 
-    const block = (): StmtInst | undefined => {
+    const block = (): StmtResult => {
         const stmts: StmtInst[] = [];
         while(consume_keyword("\n"));
         while(!consume_keyword("}")) {
             const inst = stmt();
-            if(inst === undefined) return undefined;
-            stmts.push(inst);
+            if(inst.error) return inst;
+            stmts.push(inst.stmt);
             while(consume_keyword("\n"));
         }
-        return {kind: "BLOCK", stmts: stmts};
+        return {error: false, stmt: {kind: "BLOCK", stmts: stmts}};
     }
 
-    const expr_stmt = (): StmtInst | undefined => {
+    const expr_stmt = (): StmtResult => {
         const expr_stmt = expr();
-        if(expr_stmt !== undefined && (is_keyword("\n") || is_keyword("}"))) return {kind: "EXPR", expr: expr_stmt};
-        return undefined;
+        if(expr_stmt.error) return expr_stmt;
+        if((is_keyword("\n") || is_keyword("}") || is_end())) return {error: false, stmt: {kind: "EXPR", expr: expr_stmt.expr}};
+        return gen_error_result("expected '\\n'");
     }
 
-    const expr = (): ExprInst | undefined => {
-        const inst_and_type = store();
-        if(inst_and_type === undefined) return undefined;
-        return inst_and_type[0];
+    const expr = (): ExprResult => {
+        return store();
     }
 
-    const store = (): [ExprInst, Type] | undefined => {
+    const store = (): ExprResult => {
         const var_name = is_ident();
         if(var_name === undefined) return equal();
         const found_var = find_var(var_name)
         if(found_var === undefined) {
             i++;
-            if(!consume_keyword("=")) return undefined;
+            if(!consume_keyword("=")) return gen_error_result("expected '='");
             const value = store();
-            if(value === undefined) return undefined;
-            return [{kind: "STORE", var_indexes: [{kind: "NUM", num: declare_var(var_name, value[1])}], value: value[0]}, value[1]];
+            if(value.error) return value;
+            return {error: false, expr: {kind: "STORE", var_indexes: [{kind: "NUM", num: declare_var(var_name, value.type)}], value: value.expr}, type: value.type};
         }
 
         const left = equal();
-        if(left === undefined) return undefined;
+        if(left.error) return left;
         let store_kind: StoreKind | undefined = undefined;
         if(consume_keyword("=")) store_kind = "STORE";
         else if(consume_keyword("+=")) store_kind = "ADDSTORE";
         else if(consume_keyword("-=")) store_kind = "SUBSTORE";
 
         if(store_kind === undefined) return left;
-        if(left[0].kind !== "LOAD") return undefined;
+        if(left.expr.kind !== "LOAD") return gen_error_result("unexpected", -1);
         const right = store();
-        if(right === undefined) return undefined;
+        if(right.error) return right;
 
         if(store_kind === "STORE") {
-            if(!is_same_type(left[1], right[1])) return undefined;
-            return [{kind: "STORE", var_indexes: left[0].var_indexes, value: right[0]}, right[1]];
+            if(!is_same_type(left.type, right.type)) return gen_error_result("not same type", -1);
+            return {error: false, expr: {kind: "STORE", var_indexes: left.expr.var_indexes, value: right.expr}, type: right.type};
         }
-        if(store_kind === "ADDSTORE" && left[1].kind === "array" && is_same_type(left[1].base_type, right[1]))
-            return [{kind: "PUSHSTORE", var_indexes: left[0].var_indexes, value: right[0]}, right[1]]
+        if(store_kind === "ADDSTORE" && left.type.kind === "array" && is_same_type(left.type.base_type, right.type))
+            return {error: false, expr: {kind: "PUSHSTORE", var_indexes: left.expr.var_indexes, value: right.expr}, type: right.type};
 
-        if(left[1].kind === "number" && right[1].kind === "number")
-            return [{kind: store_kind, var_indexes: left[0].var_indexes, value: right[0]}, right[1]]
-        return undefined;
+        if(left.type.kind === "number" && right.type.kind === "number")
+            return {error: false, expr: {kind: store_kind, var_indexes: left.expr.var_indexes, value: right.expr}, type: right.type};
+        return gen_error_result("expected both type are number", -1);
     }
 
-    const equal = (): [ExprInst, Type] | undefined => {
+    const equal = (): ExprResult => {
         let left = add();
-        if(left === undefined) return undefined;
+        if(left.error) return left;
         for(;;) {
             let equal_kind: BinaryKind | undefined = undefined;
             if(consume_keyword("==")) equal_kind = "EQU";
@@ -269,16 +322,17 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
 
             if(equal_kind === undefined) break;
             const right = add();
-            if(right === undefined || left[1].kind !== "number" || right[1].kind !== "number") return undefined;
-            left = [{kind: equal_kind, left: left[0], right: right[0]}, {kind: "number"}];
+            if(right.error) return right;
+            if(left.type.kind !== "number" || right.type.kind !== "number") return gen_error_result("expected number and number", -1);
+            left = {error: false, expr: {kind: equal_kind, left: left.expr, right: right.expr}, type: {kind: "number"}};
             continue;
         }
         return left;
     }
 
-    const add = (): [ExprInst, Type] | undefined => {
+    const add = (): ExprResult => {
         let left = mul();
-        if(left === undefined) return undefined;
+        if(left.error) return left;
         for(;;) {
             let add_kind: BinaryKind | undefined = undefined;
             if(consume_keyword("+")) add_kind = "ADD";
@@ -286,16 +340,17 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
 
             if(add_kind === undefined) break;
             const right = mul();
-            if(right === undefined || left[1].kind !== "number" || right[1].kind !== "number") return undefined;
-            left = [{kind: add_kind, left: left[0], right: right[0]}, {kind: "number"}];
+            if(right.error) return right;
+            if(left.type.kind !== "number" || right.type.kind !== "number") return gen_error_result("expected number and number", -1);
+            left = {error: false, expr: {kind: add_kind, left: left.expr, right: right.expr}, type: {kind: "number"}};
             continue;
         }
         return left;
     }
 
-    const mul = (): [ExprInst, Type] | undefined => {
+    const mul = (): ExprResult => {
         let left = primary();
-        if(left === undefined) return undefined;
+        if(left.error) return left;
         for(;;) {
             let mul_kind: BinaryKind | undefined = undefined;
             if(consume_keyword("*")) mul_kind = "MUL";
@@ -303,55 +358,60 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
 
             if(mul_kind === undefined) break;
             const right = primary();
-            if(right === undefined || left[1].kind !== "number" || right[1].kind !== "number") return undefined;
-            left = [{kind: mul_kind, left: left[0], right: right[0]}, {kind: "number"}];
+            if(right.error) return right;
+            if(left.type.kind !== "number" || right.type.kind !== "number") return gen_error_result("expected number and number", -1);
+            left = {error: false, expr: {kind: mul_kind, left: left.expr, right: right.expr}, type: {kind: "number"}};
             continue;
         }
         return left;
     }
         
-    const primary = (): [ExprInst, Type] | undefined => {
+    const primary = (): ExprResult => {
         if(consume_keyword("__print__")) {
-            const args = func_args();
-            if(args === undefined || args.length !== 1) return undefined;
-            return [{kind: "PRINT", value: args[0][0]}, {kind: "obj", pros: []}];
+            const args_result = func_args(1);
+            if(args_result.error) return args_result;
+            const args = args_result.args;
+            return {error: false, expr: {kind: "PRINT", value: args[0][0]}, type: {kind: "obj", pros: []}};
         }
 
         if(consume_keyword("__draw_circle__")) {
-            const args = func_args();
-            if(args === undefined || args.length !== 4 || args[0][1].kind !== "number" || args[1][1].kind !== "number" || args[2][1].kind !== "number" || args[3][1].kind !== "string") return undefined;
-            return [{kind: "DRAWCIRCLE", radius: args[0][0], x: args[1][0], y: args[2][0], color: args[3][0]}, {kind: "obj", pros: []}];
+            const args_result = func_args(4);
+            if(args_result.error) return args_result;
+            const args = args_result.args;
+            if(args[0][1].kind !== "number" || args[1][1].kind !== "number" || args[2][1].kind !== "number" || args[3][1].kind !== "string") return gen_error_result("mismatch args type", -1);
+            return {error: false, expr: {kind: "DRAWCIRCLE", radius: args[0][0], x: args[1][0], y: args[2][0], color: args[3][0]}, type: {kind: "obj", pros: []}};
         }
 
         for(const pressed_kind of ["W", "A", "S", "D", "SPACE"] as PressedKind[]) {
             if(consume_keyword("__" + pressed_kind + "__")) {
-                const args = func_args();
-                if(args === undefined || args.length !== 0) return undefined;
-                return [{kind: pressed_kind}, {kind: "number"}]
+                const args_result = func_args(0);
+                if(args_result.error) return args_result;
+                const args = args_result.args;
+                return {error: false, expr: {kind: pressed_kind},type: {kind: "number"}}
             }
         }
 
         if(consume_keyword("(")) {
             const inst = store();
-            if(inst === undefined) return undefined;
+            if(inst.error) return inst;
             if(consume_keyword(")")) return inst;
-            return undefined;
+            return gen_error_result("expected ')'");
         }
 
         if(consume_keyword("{")) {
             const pros: Map<string, [ExprInst, Type]> = new Map();
             while(!consume_keyword("}")) {
                 const key_name = is_ident();
-                if(key_name === undefined) return undefined;
-                if(pros.has(key_name)) return undefined;
+                if(key_name === undefined) return gen_error_result('expected identifier');
+                if(pros.has(key_name)) return gen_error_result('already used key name');
                 i++;
 
-                if(!consume_keyword(":")) return undefined;
+                if(!consume_keyword(":")) return gen_error_result("expected ':'");
                 const value = store();
-                if(value === undefined) return undefined;
+                if(value.error) return value;
                 if(is_keyword(",")) i++;
-                else if(!is_keyword("}")) return undefined;
-                pros.set(key_name, value);
+                else if(!is_keyword("}")) return gen_error_result("expected '}'");
+                pros.set(key_name, [value.expr, value.type]);
                 continue;
             }
             const pro_values: ExprInst[] = [];
@@ -360,22 +420,22 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
                 pro_values.push(value[0]);
                 pro_types.push([key_name, value[1]]);
             });
-            return [{kind: "OBJ", pro_values: pro_values}, {kind: "obj", pros: pro_types}];
+            return {error: false, expr: {kind: "OBJ", pro_values: pro_values}, type: {kind: "obj", pros: pro_types}};
         }
 
         const var_name = is_ident();
         if(var_name !== undefined) {
             i++;
             const found_var = find_var(var_name);
-            if(found_var === undefined) return undefined;
+            if(found_var === undefined) return gen_error_result('not defined var name');
 
             const var_indexes: ExprInst[] = [{kind: "NUM", num: found_var.index}];
             let var_type = found_var.type;
             load: for(;;) {
                 if(consume_keyword(".")) {
-                    if(var_type.kind !== 'obj') return undefined;
+                    if(var_type.kind !== 'obj') return gen_error_result('not object type', -1);
                     const pro_name = is_ident();
-                    if(pro_name === undefined) return undefined;
+                    if(pro_name === undefined) return gen_error_result('expected key name');
                     i++;
                     for(const [index, pro] of var_type.pros.entries()) {
                         if(pro_name === pro[0]) {
@@ -384,55 +444,63 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]) => 
                             continue load;
                         }
                     }
-                    return undefined;
+                    return gen_error_result('not defined key name', -1);
                 }
                 if(consume_keyword("[")) {
-                    if(var_type.kind !== 'array') return undefined;
+                    if(var_type.kind !== 'array') return gen_error_result('not array type', -1);
                     const array_index = store();
-                    if(array_index === undefined || array_index[1].kind !== "number") return undefined;
-                    var_indexes.push(array_index[0]);
+                    if(array_index.error) return array_index;
+                    if(array_index.type.kind !== "number") return gen_error_result('not number type', -1);
+                    var_indexes.push(array_index.expr);
                     var_type = var_type.base_type;
-                    if(!consume_keyword("]")) return undefined;
+                    if(!consume_keyword("]")) return gen_error_result("expected ']'");
                     continue;
                 }
                 break;
             }
-            return [{kind: "LOAD", var_indexes: var_indexes}, var_type];
+            return {error: false, expr: {kind: "LOAD", var_indexes: var_indexes}, type: var_type};
         }
 
         const str = is_str();
         if(str !== undefined) {
             i++;
-            return [{kind: "STR", str: str}, {kind: "string"}];
+            return {error: false, expr: {kind: "STR", str: str}, type: {kind: "string"}};
         }
 
         const num = is_num();
         if(num !== undefined) {
             i++;
-            return [{kind: "NUM", num: num}, {kind: "number"}];
+            return {error: false, expr: {kind: "NUM", num: num}, type: {kind: "number"}};
         }
         
-        return undefined;
+        return gen_error_result("invalid token");
     }
     
-    const func_args = (): [ExprInst, Type][] | undefined => {
+    const func_args = (expected_length: number): {error: false, args: [ExprInst, Type][]} | ErrorResult => {
         if(consume_keyword("(")) {
             var is_first = true;
             const args: [ExprInst, Type][] = [];
             while(!consume_keyword(")")) {
                 if(is_first) is_first = false;
-                else if(!consume_keyword(",")) return undefined;
+                else if(!consume_keyword(",")) return gen_error_result("expected ','");
 
                 const arg = store();
-                if(arg === undefined) return undefined;
-                args.push(arg);
+                if(arg.error) return arg;
+                args.push([arg.expr, arg.type]);
             }
-            return args;
+            if(args.length !== expected_length) return gen_error_result("expected args of " + expected_length + " length", -1);
+            return {error: false, args: args};
         }
-        return undefined;
+        return gen_error_result("expected '('");
     }
 
-    const code_block = block();
-    if(!is_end()) return undefined;
-    return code_block;
+    const stmts: StmtInst[] = [];
+    while(consume_keyword("\n"));
+    while(!is_end()) {
+        const inst = stmt();
+        if(inst.error) return inst;
+        stmts.push(inst.stmt);
+        while(consume_keyword("\n"));
+    }
+    return {error: false, stmt: {kind: "BLOCK", stmts: stmts}};
 }

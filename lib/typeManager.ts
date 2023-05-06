@@ -1,6 +1,7 @@
 import fs from 'fs'
 
 import { gen_real_path } from './lib'
+import { alpha_keywords } from './genInst';
 
 export type Type =
 | {kind: "number"}
@@ -71,6 +72,9 @@ export const type_str_to_type = (type_str: string): Type | undefined => {
             let normal = type_str.charAt(i);
             while(i + 1 < type_str.length && (is_alpha(type_str.charAt(i + 1)) || is_num(type_str.charAt(i + 1)) || type_str.charAt(i + 1) === '_')) {
                 normal += type_str.charAt(++i);
+            }
+            for(const keyword of alpha_keywords) {
+                if(normal === keyword) return undefined;
             }
             tokens.push(normal);
             continue;

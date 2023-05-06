@@ -95,7 +95,7 @@ const genRoomRunInfo = (room_path: string): RoomRunInfo | undefined => {
             console.log(process_path + "'s code is wrong");
             return undefined;
         }
-        room_run_info.process_insts.push([process_path, inst]);
+        room_run_info.process_insts.push([process_path, inst.stmt]);
     }
     for(const croom_path of croom_paths) {
         const croom_run_info = genRoomRunInfo(croom_path);

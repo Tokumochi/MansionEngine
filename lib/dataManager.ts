@@ -2,6 +2,7 @@ import fs from 'fs'
 
 import { gen_real_path } from './lib'
 import { is_same_type, Type } from './typeManager'
+import { alpha_keywords } from './genInst';
 
 const data_strs = new Map<string, string>();
 
@@ -76,6 +77,9 @@ export const data_str_to_type_and_data = (data_str: string): [Type, any] | undef
             let ident = data_str.charAt(i);
             while(i + 1 < data_str.length && (is_alpha(data_str.charAt(i + 1)) || is_num(data_str.charAt(i + 1)) || data_str.charAt(i + 1) === '_')) {
                 ident += data_str.charAt(++i);
+            }
+            for(const keyword of alpha_keywords) {
+                if(ident === keyword) return undefined;
             }
             tokens.push({kind: "IDENT", ident: ident});
             continue;
