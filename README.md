@@ -42,3 +42,5 @@
 - バックエンドはexpress.jsで実装する
 - socket.ioでフロント・バック間のデータの受け渡しを行う
 - コードはfront-dev-mainブランチ、back-dev-mainブランチへ
+
+<blockquote class="twitter-tweet"><p lang="ja" dir="ltr"><a href="https://t.co/czfYXJF597">https://t.co/czfYXJF597</a><br>ゲームエンジンって呼んでいいのか分からないけど<br>今まで開発してきたブラウザ上で動作するノードプラグラミングもどきで、ようやく簡単なものなら作って動かせるようになった<br>UIゴミだしやりたいこと全然実装できてないけどひとまず <a href="https://t.co/ViRsCLSCls">pic.twitter.com/ViRsCLSCls</a></p>&mdash; モナチ (@monachi_jp) <a href="https://twitter.com/monachi_jp/status/1651950641529622528?ref_src=twsrc%5Etfw">April 28, 2023</a></blockquote>
