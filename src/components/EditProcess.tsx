@@ -2,8 +2,10 @@ import { Process, Type } from './Main'
 import { useEffect, useState } from 'react';
 import { useParams } from "react-router-dom";
 import { io } from 'socket.io-client';
+import { Editor, EditorState, ContentState } from "draft-js";
 
-import './style.css'
+import './style.css';
+import "draft-js/dist/Draft.css";
 
 const socket = io("http://127.0.0.1:8080");
 socket.on("connect", () => {
@@ -13,14 +15,14 @@ socket.on("connect", () => {
 function EditProcess() {
   const { path } = useParams();
 
-  const [params_str, setParamsStr] = useState(""); // obj型でなくてはならない
-  const [rets_str, setRetsStr] = useState(""); // obj型でなくてはならない
-  const [code, setCode] = useState("");
+  const [params, setParams] = useState(() => EditorState.createEmpty()); // obj型でなくてはならない
+  const [rets, setRets] = useState(() => EditorState.createEmpty()); // obj型でなくてはならない
+  const [code, setCode] = useState(() => EditorState.createEmpty());
 
   useEffect(() => {
-    socket.on("update params str", (params_str: string) => { setParamsStr(params_str); });
-    socket.on("update rets str", (rets_str: string) => { setRetsStr(rets_str); });
-    socket.on("update code", (code: string) => { setCode(code); });
+    socket.on("update params str", (params_str: string) => { setParams(EditorState.createWithContent(ContentState.createFromText(params_str))); });
+    socket.on("update rets str", (rets_str: string) => { setRets(EditorState.createWithContent(ContentState.createFromText(rets_str))); });
+    socket.on("update code", (code_str: string) => { setCode(EditorState.createWithContent(ContentState.createFromText(code_str)))});
   }, []);
 
   useEffect(() => {
@@ -29,11 +31,17 @@ function EditProcess() {
 
   return <>
 		<header style={{display: 'flex', justifyContent: 'space-evenly'}}>
-			<button onClick={() => socket.emit("save process", path, {params_str: params_str, rets_str: rets_str, code: code})}>Save</button>
+			<button onClick={() => socket.emit("save process", path, {params_str: params.getCurrentContent().getPlainText(), rets_str: rets.getCurrentContent().getPlainText(), code: code.getCurrentContent().getPlainText()})}>Save</button>
 		</header>
-    <textarea cols={150} rows={10} value={params_str} onChange={(e) => setParamsStr(e.target.value)} />
-    <textarea cols={150} rows={30} value={code} onChange={(e) => setCode(e.target.value)} />
-    <textarea cols={150} rows={10} value={rets_str} onChange={(e) => setRetsStr(e.target.value)} />
+    <div style={{margin: 10, padding: 5, borderRadius: 5, border: 'solid'}}>
+      <Editor placeholder="params(object)" editorState={params} onChange={setParams} />
+    </div>
+    <div style={{margin: 10, padding: 5, borderRadius: 5, border: 'solid'}}>
+      <Editor placeholder="code" editorState={code} onChange={setCode} />
+    </div>
+    <div style={{margin: 10, padding: 5, borderRadius: 5, border: 'solid'}}>
+      <Editor placeholder="rets(object)" editorState={rets} onChange={setRets} />
+    </div>
   </>
 }
 

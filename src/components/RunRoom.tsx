@@ -68,16 +68,16 @@ function RunRoom() {
 	//console.log(props.top_room_run_info);
 
 	useEffect(() => {
+		const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+		const ctx = canvas.getContext("2d");
+
+		if(ctx === null) return;
+
     	socket.on("run", (top_room_run_info: RoomRunInfo | null) => {
 			if(top_room_run_info === null) {
 				window.close();
 				return;
 			}
-
-			const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-			const ctx = canvas.getContext("2d");
-
-			if(ctx === null) return;
 
 			const draw_circle = (x: number, y: number, radius: number, color: string) => {
 				ctx.fillStyle = color;
@@ -163,6 +163,7 @@ function RunRoom() {
 							const x = run_expr(expr_inst.x);
 							const y = run_expr(expr_inst.y);
 							const color = run_expr(expr_inst.color);
+							console.log(color)
 							if(radius === undefined || x === undefined || y === undefined || color === undefined) return undefined;
 							if(typeof x !== 'number' || typeof y !== 'number' || typeof radius !== 'number') return undefined;
 							draw_circle(x, y, radius, color);
