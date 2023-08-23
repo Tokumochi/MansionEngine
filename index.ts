@@ -22,6 +22,13 @@ export interface RoomRunInfo {
     output_source: {id: string, index: number},
 }
 
+type CompileErrorKind = "DataFur" | "ProcessFur" | "RoomPath" | "DataCode" | "ProcessCode"
+
+type CompileError = {
+    kind: CompileErrorKind,
+    message: string,
+}
+
 const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http, {
@@ -42,11 +49,11 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 
 
 
-const genRoomRunInfo = (room_path: string): RoomRunInfo | undefined => {
+const genRoomRunInfo = (room_path: string): {is_error: false, info: RoomRunInfo} | {is_error: true, error: CompileError} => {
     const place = get_place(room_path);
     if(place === undefined) {
         console.log("room path is wrong");
-        return undefined;
+        return {is_error: true, error: {kind: "RoomPath", message: "room path is wrong"}};
     }
 
     const data_paths = new Set<string>();
@@ -78,32 +85,32 @@ const genRoomRunInfo = (room_path: string): RoomRunInfo | undefined => {
         const data_str = get_data_str(data_path);
         if(data_str === undefined) {
             console.log("data path '" + data_path + "' is wrong");
-            return undefined;
+            return {is_error: true, error: {kind: "DataFur", message: "data path '" + data_path + "' is wrong"}};
         }
         const type_and_data = data_str_to_type_and_data(data_str);
-        if(type_and_data === undefined) return undefined;
+        if(type_and_data === undefined) return {is_error: true, error: {kind: "DataCode", message: "can't compile data " + data_path + "'s code"}};;
         room_run_info.data_values.push([data_path, type_and_data[1]]);
     }
     for(const process_path of process_paths) {
         const process = get_process(process_path);
         if(process === undefined) {
             console.log("process path '" + process_path + "' is wrong");
-            return undefined;
+            return {is_error: true, error: {kind: "ProcessFur", message: "process path '" + process_path + "' is wrong"}};
         }
         const inst = genProcessInst(process);
-        if(inst === undefined) {
+        if(inst.is_error) {
             console.log(process_path + "'s code is wrong");
-            return undefined;
+            return {is_error: true, error: {kind: "ProcessCode", message: process_path + "'s error\n" + inst.error_message}};
         }
         room_run_info.process_insts.push([process_path, inst.stmt]);
     }
     for(const croom_path of croom_paths) {
         const croom_run_info = genRoomRunInfo(croom_path);
-        if(croom_run_info === undefined) return undefined;
-        room_run_info.croom_run_infos.push([croom_path, croom_run_info]);
+        if(croom_run_info.is_error) return croom_run_info;
+        room_run_info.croom_run_infos.push([croom_path, croom_run_info.info]);
     }
 
-    return room_run_info;
+    return {is_error: false, info: room_run_info};
 }
 
 
@@ -415,8 +422,12 @@ io.on('connection', (socket: Socket) => {
 
     // ランルームページ
     socket.on("compile", (room_path: string) => {
-        const top_room_run_info = genRoomRunInfo(room_path);
-        io.to(socket.id).emit("run", top_room_run_info);
+        const compile_result = genRoomRunInfo(room_path);
+        if(compile_result.is_error) {
+            io.to(socket.id).emit("compile error", compile_result.error.kind, compile_result.error.message);
+        } else {
+            io.to(socket.id).emit("run", compile_result.info);
+        }
     });
 
 

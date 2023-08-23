@@ -40,48 +40,43 @@ const sign_keywords = ["==", "!=", "<=", ">=", "+=", "-=",
                        "(", ")", "{", "}", "[", "]",
                        ":", ",", "."];
 
-const LogErrorMessage = (code: string, line_num: number, col_num: number, message: string) => {
-    console.log((line_num + 1) + ":" + (col_num + 1));
-    console.log(code.split('\n')[line_num]);
-    console.log(' '.repeat(col_num) + '^ ' + message);
+const genErrorMessage = (code: string, line_num: number, col_num: number, message: string): string => {
+    return (line_num + 1) + ":" + (col_num + 1) + '\n'
+        + code.split('\n')[line_num] + '\n'
+        + ' '.repeat(col_num) + '^ ' + message;
 }
 
-export const genProcessInst = (process: Process) => {
+export const genProcessInst = (process: Process): {is_error: false, stmt: StmtInst} | {is_error: true, error_message: string} => {
     const declared_vars: {name: string, type: Type}[] = [];
 
     const param_obj_type = type_str_to_type(process.params_str);
     if(param_obj_type === undefined) {
         console.log("can't compile params str");
-        return;
+        return {is_error: true, error_message: "can't compile params str"}
     }
     if(param_obj_type.kind !== 'obj') {
         console.log("params str' kind is not obj");
-        return;
+        return {is_error: true, error_message: "params str' kind is not obj"}
     }
     const ret_obj_type = type_str_to_type(process.rets_str);
     if(ret_obj_type === undefined) {
         console.log("can't compile rets str");
-        return;
+        return {is_error: true, error_message: "can't compile rets str"}
     }
     if(ret_obj_type.kind !== 'obj') {
         console.log("rets str' kind is not obj");
-        return;
+        return {is_error: true, error_message: "rets str' kind is not obj"}
     }
     for(const pro of param_obj_type.pros) declared_vars.push({name: pro[0], type: pro[1]});
     for(const pro of ret_obj_type.pros) declared_vars.push({name: pro[0], type: pro[1]});
 
     const tokenize_result = Tokenize(process.code);
-    if(tokenize_result.error) {
-        LogErrorMessage(process.code, tokenize_result.line_num, tokenize_result.col_num, tokenize_result.message);
-        return undefined;
-    }
+    if(tokenize_result.error) return {is_error: true, error_message: genErrorMessage(process.code, tokenize_result.line_num, tokenize_result.col_num, tokenize_result.message)};
 
     const top_stmt = Parse(tokenize_result.tokens, declared_vars);
-    if(top_stmt.error) {
-        LogErrorMessage(process.code, top_stmt.line_num, top_stmt.col_num, top_stmt.message);
-        return undefined;
-    }
-    return top_stmt;
+    if(top_stmt.error) return {is_error: true, error_message: genErrorMessage(process.code, top_stmt.line_num, top_stmt.col_num, top_stmt.message)};
+
+    return {is_error: false, stmt: top_stmt.stmt};
 }
 
 const Tokenize = (code: string): TokenizeResult => {
