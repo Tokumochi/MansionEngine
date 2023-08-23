@@ -17,6 +17,9 @@ type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
             {kind: "NUM", num: number} |
             {kind: "PRINT", value: ExprInst} |
             {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst, color: ExprInst} |
+			{kind: "INSERT", array: ExprInst, index: ExprInst, value: ExprInst} |
+			{kind: "REMOVE", array: ExprInst, index: ExprInst} |
+			{kind: "LENGTH", array: ExprInst} |
             {kind: PressedKind}
 
 export type StmtInst = {kind: "EXPR", expr: ExprInst} |
@@ -163,11 +166,33 @@ function RunRoom() {
 							const x = run_expr(expr_inst.x);
 							const y = run_expr(expr_inst.y);
 							const color = run_expr(expr_inst.color);
-							console.log(color)
 							if(radius === undefined || x === undefined || y === undefined || color === undefined) return undefined;
 							if(typeof x !== 'number' || typeof y !== 'number' || typeof radius !== 'number') return undefined;
 							draw_circle(x, y, radius, color);
 							return;
+						}
+						case "INSERT": {
+							const array = run_expr(expr_inst.array);
+							const index = run_expr(expr_inst.index);
+							const value = run_expr(expr_inst.value);
+							if(array === undefined || index === undefined || value === undefined) return undefined;
+							if(!Array.isArray(array) || typeof index !== 'number') return undefined;
+							array.splice(index, 0, value);
+							return;
+						}
+						case "REMOVE": {
+							const array = run_expr(expr_inst.array);
+							const index = run_expr(expr_inst.index);
+							if(array === undefined || index === undefined) return undefined;
+							if(!Array.isArray(array) || typeof index !== 'number') return undefined;
+							array.splice(index, 1);
+							return;
+						}
+						case "LENGTH": {
+							const array = run_expr(expr_inst.array);
+							if(array === undefined) return undefined;
+							if(!Array.isArray(array)) return undefined;
+							return array.length;
 						}
 						case "W": return is_W_pressed;
 						case "A": return is_A_pressed;
