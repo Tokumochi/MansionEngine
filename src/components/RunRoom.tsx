@@ -268,7 +268,11 @@ function RunRoom() {
 				requestAnimationFrame(tick);
 			}
 			requestAnimationFrame(tick);
-		})
+		});
+
+    	socket.on("compile error", (error_kind: string, error_message) => {
+			alert(error_kind + ":" + error_message);
+		});
 
 		socket.emit("compile", path);
 	}, [])
