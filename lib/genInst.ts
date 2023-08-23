@@ -19,6 +19,9 @@ type ExprInst = {kind: "LOAD", var_indexes: ExprInst[]} |
                 {kind: "NUM", num: number} |
                 {kind: "PRINT", value: ExprInst} |
                 {kind: "DRAWCIRCLE", radius: ExprInst, x: ExprInst, y: ExprInst, color: ExprInst} |
+                {kind: "INSERT", array: ExprInst, index: ExprInst, value: ExprInst} |
+                {kind: "REMOVE", array: ExprInst, index: ExprInst} |
+                {kind: "LENGTH", array: ExprInst} |
                 {kind: PressedKind}
 
 export type StmtInst = {kind: "EXPR", expr: ExprInst} |
@@ -31,7 +34,7 @@ type ExprResult = {error: false, expr: ExprInst, type: Type} | ErrorResult
 type StmtResult = {error: false, stmt: StmtInst} | ErrorResult
 
 
-export const alpha_keywords = ["__print__", "__draw_circle__",
+export const alpha_keywords = ["__print__", "__draw_circle__", "__insert__", "__remove__",  "__length__",
                                "__W__", "__A__", "__S__", "__D__", "__SPACE__",
                                "if", "while"];
 
@@ -377,12 +380,36 @@ const Parse = (tokens: Token[], declared_vars: {name: string, type: Type}[]): St
             return {error: false, expr: {kind: "DRAWCIRCLE", radius: args[0][0], x: args[1][0], y: args[2][0], color: args[3][0]}, type: {kind: "obj", pros: []}};
         }
 
+        if(consume_keyword("__insert__")) {
+            const args_result = func_args(3);
+            if(args_result.error) return args_result;
+            const args = args_result.args;
+            if(args[0][1].kind !== "array" || args[1][1].kind !== "number" || args[2][1].kind !== args[0][1].base_type.kind) return gen_error_result("mismatch args type", -1);
+            return {error: false, expr: {kind: "INSERT", array: args[0][0], index: args[1][0], value: args[2][0]}, type: {kind: "obj", pros: []}};
+        }
+
+        if(consume_keyword("__remove__")) {
+            const args_result = func_args(2);
+            if(args_result.error) return args_result;
+            const args = args_result.args;
+            if(args[0][1].kind !== "array" || args[1][1].kind !== "number") return gen_error_result("mismatch args type", -1);
+            return {error: false, expr: {kind: "REMOVE", array: args[0][0], index: args[1][0]}, type: {kind: "obj", pros: []}};
+        }
+
+        if(consume_keyword("__length__")) {
+            const args_result = func_args(1);
+            if(args_result.error) return args_result;
+            const args = args_result.args;
+            if(args[0][1].kind !== "array") return gen_error_result("mismatch args type", -1);
+            return {error: false, expr: {kind: "LENGTH", array: args[0][0]}, type: {kind: "number"}};
+        }
+
         for(const pressed_kind of ["W", "A", "S", "D", "SPACE"] as PressedKind[]) {
             if(consume_keyword("__" + pressed_kind + "__")) {
                 const args_result = func_args(0);
                 if(args_result.error) return args_result;
                 const args = args_result.args;
-                return {error: false, expr: {kind: pressed_kind},type: {kind: "number"}}
+                return {error: false, expr: {kind: pressed_kind}, type: {kind: "number"}}
             }
         }
 
