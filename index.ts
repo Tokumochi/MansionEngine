@@ -19,7 +19,7 @@ export interface RoomRunInfo {
     process_insts: [string, StmtInst][],
     croom_run_infos: [string, RoomRunInfo][],
   
-    output_source: {id: string, index: number},
+    output_sources: {id: string, index: number}[],
 }
 
 type CompileErrorKind = "DataFur" | "ProcessFur" | "RoomPath" | "DataCode" | "ProcessCode"
@@ -78,7 +78,7 @@ const genRoomRunInfo = (room_path: string): {is_error: false, info: RoomRunInfo}
         data_values: [],
         process_insts: [],
         croom_run_infos: [],
-        output_source: place.output_source,
+        output_sources: place.output_sources,
     };
 
     for(const data_path of data_paths) {
@@ -159,7 +159,7 @@ io.on('connection', (socket: Socket) => {
                 break;
             case "room":
                 fs.mkdirSync(real_path + '/' + new_name + '.room');
-                fs.writeFileSync(real_path + '/' + new_name + '.room/placement.json', '{\n"data_furs": [],\n"process_furs": [],\n"croom_furs": [],\n"output_source": {"id": "-1", "index": 0, "type": {"kind": "number"}}\n}');
+                fs.writeFileSync(real_path + '/' + new_name + '.room/placement.json', '{\n"data_furs": [],\n"process_furs": [],\n"croom_furs": [],\n"output_sources": []\n}');
                 break;
             case "type":
                 fs.writeFileSync(real_path + '/' + new_name + '.type.json', '"number"');
@@ -232,7 +232,7 @@ io.on('connection', (socket: Socket) => {
         io.to(socket.id).emit("update data furs", Array.from(place.data_furs));
         io.to(socket.id).emit("update process furs", Array.from(place.process_furs));
         io.to(socket.id).emit("update croom furs", Array.from(place.croom_furs));
-        io.to(socket.id).emit("update output source", place.output_source);
+        io.to(socket.id).emit("update output sources", place.output_sources);
     });
     socket.on("set fur pos", (room_path: string, target_id: string, x: number, y: number) => {
         const place = get_place(room_path);
@@ -302,10 +302,10 @@ io.on('connection', (socket: Socket) => {
 
         // 上側がroomのoutputの場合
         if(upper_id === "output") {
-            place.output_source.id = lower_id;
-            place.output_source.index = lower_index;
-            place.output_source.type = lower_type;
-            io.in(room_path).emit("update output source", place.output_source);
+            place.output_sources[upper_index].id = lower_id;
+            place.output_sources[upper_index].index = lower_index;
+            place.output_sources[upper_index].type = lower_type;
+            io.in(room_path).emit("update output sources", place.output_sources);
             return;
         }
 
@@ -397,10 +397,24 @@ io.on('connection', (socket: Socket) => {
             x: x,
             y: y,
             path: croom_path,
-            emit: target_croom_place.output_source.type,
+            emits: target_croom_place.output_sources.map(output_source => output_source.type),
         };
         place.croom_furs.set(new_id, new_croom_fur);
         io.in(room_path).emit("update croom fur", new_id, new_croom_fur);
+    });
+    socket.on("increment output sources", (room_path: string) => {
+        const place = get_place(room_path);
+        if(place === undefined) return;
+
+        place.output_sources.push({id: "-1", index: -1, type: {kind: "number"}});
+        io.in(room_path).emit("update output sources", place.output_sources);
+    });
+    socket.on("decrement output sources", (room_path: string) => {
+        const place = get_place(room_path);
+        if(place === undefined) return;
+
+        place.output_sources.pop();
+        io.in(room_path).emit("update output sources", place.output_sources);
     });
     socket.on("save placement", (room_path: string) => {
         const place = get_place(room_path);
@@ -415,8 +429,8 @@ io.on('connection', (socket: Socket) => {
             data_furs: Array.from(place.data_furs),
             process_furs: Array.from(place.process_furs),
             croom_furs: Array.from(place.croom_furs),
-            output_source: place.output_source,
-        }));
+            output_sources: place.output_sources,
+        }, null, 2));
     });
 
 

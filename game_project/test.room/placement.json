@@ -31,5 +31,5 @@
             "emit": {"kind": "number"}
         }]
     ],
-    "output_source": {"id": "4", "index": 0, "type": {"kind": "number"}}
+    "output_sources": [{"id": "4", "index": 0, "type": {"kind": "number"}}]
 }
