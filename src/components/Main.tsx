@@ -32,6 +32,7 @@ export interface Furniture {
 }
 
 export interface DataFurniture extends Furniture {
+  data_type: Type,
 }
 
 export interface ProcessFurniture extends Furniture {
@@ -43,6 +44,7 @@ export interface ProcessFurniture extends Furniture {
 }
 
 export interface CroomFurniture extends Furniture {
+  emits: Type[],
 }
 
 function PageRoute() {

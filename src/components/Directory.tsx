@@ -74,7 +74,7 @@ export function Directory(props: {path: string}) {
 			  	is_room &&
 			  	<>
 			  		<h2 className='m-0 text-room'>{ dir_name }(room)</h2>
-			  		<a className='btn bg-room ms-2 p-1' href={'/' + path + '/placement'} target="_blank" rel="noreferrer">
+			  		<a className='btn bg-room ms-2 p-1' href={'/' + path + '/room'} target="_blank" rel="noreferrer">
 			  			<h5 className='p-1 m-0 fw-bolder'>編集</h5>
 			  		</a>
 			  	</>

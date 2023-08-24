@@ -10,10 +10,8 @@ import './style.css'
 
 
 type Popup = 
-  | {kind: "None"}
-  | {kind: "NewFur", x: number, y: number}
-  | {kind: "EditFur", x: number, y: number, fur_id: string}
-
+  | {is_displayed: false}
+  | {is_displayed: true, x: number, y: number}
 
 const socket = io("http://127.0.0.1:8080");
 socket.on("connect", () => {
@@ -22,27 +20,29 @@ socket.on("connect", () => {
 
 var top_room_run_info = {} as RoomRunInfo;
 
+var current_over_fur = "";
+
 function EditPlacement() {
   const { path } = useParams();
 
-  const fur_width = 200;
-  const fur_height = 120;
+  const fur_width = 280;
+  const fur_height = 100;
 
   const [data_furs, setDataFurs] = useState(new Map([] as [string, DataFurniture][]));
   const [process_furs, setProcessFurs] = useState(new Map([] as [string, ProcessFurniture][]));
   const [croom_furs, setCroomFurs] = useState(new Map([] as [string, CroomFurniture][]));
-  const [output_source, setOutputSource] = useState({id: "-1", index: -1, type: {"kind": "number"}});
+  const [output_sources, setOutputSources] = useState([] as {id: string, index: number, type: Type}[]);
 
   //const [isRunMode, setIsRunMode] = useState(false);
 
-  const [popup, setPopup] = useState({kind: "None"} as Popup);
+  const [popup, setPopup] = useState({is_displayed: false} as Popup);
   
   useEffect(() => {
     socket.on("update data furs", (data_furs: [string, DataFurniture][]) => setDataFurs(new Map(data_furs)));
     socket.on("update process furs", (process_furs: [string, ProcessFurniture][]) => setProcessFurs(new Map(process_furs)));
     socket.on("update croom furs", (croom_furs: [string, CroomFurniture][]) => setCroomFurs(new Map(croom_furs)));
 
-    socket.on("update output source", (output_source: {id: string, index: number, type: Type}) => {setOutputSource(output_source)});
+    socket.on("update output sources", (output_sources: {id: string, index: number, type: Type}[]) => {setOutputSources(output_sources)});
   }, []);
 
   useEffect(() => {
@@ -73,20 +73,20 @@ function EditPlacement() {
     socket.emit("connect furs", path, upper_id, upper_index, lower_id, lower_index);
   };
 
-  const closeMenu = () => { setPopup({kind: "None"}) };
+  const closeMenu = () => { setPopup({is_displayed: false}) };
 
   const genDataFur = (data_path: string) => {
-    if(popup.kind === "NewFur")
+    if(popup.is_displayed)
       socket.emit("gen data fur", path, popup.x, popup.y, data_path);
     closeMenu();
   }
   const genProcessFur = (process_path: string) => {
-    if(popup.kind === "NewFur")
+    if(popup.is_displayed)
       socket.emit("gen process fur", path, popup.x, popup.y, process_path);
     closeMenu();
   }
   const genCroomFur = (croom_path: string) => {
-    if(popup.kind === "NewFur")
+    if(popup.is_displayed)
       socket.emit("gen croom fur", path, popup.x, popup.y, croom_path);
     closeMenu();
   }
@@ -101,7 +101,7 @@ function EditPlacement() {
 
   window.onmousemove = (e) => {
     if(tempFur.isDisplayed) {
-      setTempFur({isDisplayed: true, id: tempFur.id, x: e.offsetX - fur_width / 2, y: e.offsetY - fur_height / 2});
+      setTempFur({isDisplayed: true, id: tempFur.id, x: e.pageX - fur_width / 2, y: e.pageY - fur_height / 2});
     }
   };
 
@@ -127,7 +127,7 @@ function EditPlacement() {
     }
     const lower_croom_fur = croom_furs.get(lower_id);
     if(lower_croom_fur !== undefined) {
-      return <line x1={upper_x} y1={upper_y} x2={lower_croom_fur.x + fur_width / 2} y2={lower_croom_fur.y} stroke="black" strokeWidth={10} />;
+      return <line x1={upper_x} y1={upper_y} x2={lower_croom_fur.x + fur_width * (lower_index + 1) / (lower_croom_fur.emits.length + 1)} y2={lower_croom_fur.y} stroke="black" strokeWidth={10} />;
     }
 
     return <></>
@@ -139,12 +139,11 @@ function EditPlacement() {
     // process furs
     process_furs.forEach((process_fur, id) => {
       fur_elements.push(<g>
-        <rect x={process_fur.x} y={process_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#eeaaaa" 
-          onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: process_fur.x, y: process_fur.y})}
+        <rect x={process_fur.x} y={process_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#eeaaaa" stroke='black' strokeWidth={5}
+          onMouseEnter={() => {current_over_fur = id}}
+          onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: process_fur.x, y: process_fur.y})} 
         />
-        <text x={process_fur.x + fur_width / 2} y={process_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central"
-          onClick={(e) => {e.stopPropagation(); setPopup({kind: 'EditFur', x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, fur_id: id})}}
-        >
+        <text x={process_fur.x + fur_width / 2} y={process_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central">
           {process_fur.path.split('-').pop()}
         </text>
         {
@@ -182,12 +181,11 @@ function EditPlacement() {
     // data furs
     data_furs.forEach((data_fur, id) => {
       fur_elements.push(<g>
-        <rect x={data_fur.x} y={data_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaccaa"
+        <rect x={data_fur.x} y={data_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaccaa" stroke='black' strokeWidth={5}
+          onMouseEnter={() => {current_over_fur = id}}
           onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: data_fur.x, y: data_fur.y})} 
         />
-        <text x={data_fur.x + fur_width / 2} y={data_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central"
-          onClick={(e) => {e.stopPropagation(); setPopup({kind: 'EditFur', x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, fur_id: id})}}
-        >
+        <text x={data_fur.x + fur_width / 2} y={data_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central">
           {data_fur.path.split('-').pop()}
         </text>
         <circle cx={data_fur.x + fur_width / 2} cy={data_fur.y} r={10} 
@@ -203,25 +201,52 @@ function EditPlacement() {
     // croom furs
     croom_furs.forEach((croom_fur, id) => {
       fur_elements.push(<g>
-        <rect x={croom_fur.x} y={croom_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaaadd"
+        <rect x={croom_fur.x} y={croom_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaaadd" stroke='black' strokeWidth={5}
+          onMouseEnter={() => {current_over_fur = id}}
           onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: croom_fur.x, y: croom_fur.y})} 
         />
-        <text x={croom_fur.x + fur_width / 2} y={croom_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central"
-          onClick={(e) => {e.stopPropagation(); setPopup({kind: 'EditFur', x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, fur_id: id})}}
-        >
+        <text x={croom_fur.x + fur_width / 2} y={croom_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central">
           {croom_fur.path.split('-').pop()}
         </text>
-        <circle cx={croom_fur.x + fur_width / 2} cy={croom_fur.y} r={10} 
-          onMouseUp={() => {
-            if(tempUpper.isDisplayed) {
-              connectFurs(tempUpper.id, tempUpper.index, id, 0);
-            }
-          }}
-        />
+        {
+          croom_fur.emits.map((_, index) => {
+            return <circle cx={croom_fur.x + fur_width * (index + 1) / (croom_fur.emits.length + 1)} cy={croom_fur.y} r={10} 
+              onMouseUp={() => {
+                if(tempUpper.isDisplayed) {
+                  connectFurs(tempUpper.id, tempUpper.index, id, index);
+                }
+              }}
+            />
+          })
+        }
       </g>)
     })
 
     return fur_elements;
+  }
+
+  const display_popup = () => {
+    if(popup.is_displayed) {
+      switch(current_over_fur) {
+        case "":
+          // Furnitureの新規作成ポップアップ
+          return <div className='position-absolute' style={{left: popup.x - 50, top: popup.y - 50}} onMouseLeave={closeMenu}>
+            <Import path={path} width={600} height={400} clickType={() => {}} clickData={genDataFur} clickProcess={genProcessFur} clickRoom={genCroomFur} />
+          </div>
+        case "output":
+          // Outputの編集ポップアップ
+          return <div className='position-absolute border border-dark bg-light' style={{left: popup.x - 20, top: popup.y - 5}} onMouseLeave={closeMenu}>
+            <button className='btn btn-secondary rounded-0 w-100' onClick={() => socket.emit("increment output sources", path)}>出力数を増やす</button>
+            <button className='btn btn-secondary rounded-0 w-100' onClick={() => socket.emit("decrement output sources", path)}>出力数を減らす</button>
+          </div>
+        default:
+          // Furnitureの編集ポップアップ
+          return <div className='position-absolute border border-dark bg-light' style={{left: popup.x - 20, top: popup.y - 5}} onMouseLeave={closeMenu}>
+            <button className='btn btn-secondary rounded-0 w-100' onClick={() => {socket.emit("delete fur", path, current_over_fur); closeMenu();}}>削除</button>
+          </div>
+      }
+    }
+    return <></>
   }
 
   return (
@@ -231,16 +256,29 @@ function EditPlacement() {
 	    	<button onClick={() => socket.emit("save placement", path)}>Save</button>
       </header>
       <svg width={window.screen.width} height={window.screen.height} xmlns="http://www.w3.org/2000/svg"
-        onContextMenu={(e) => {e.preventDefault(); setPopup({kind: 'NewFur', x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY})}}
+        onContextMenu={(e) => {e.preventDefault(); setPopup({is_displayed: true, x: e.pageX, y: e.pageY});}}
       >
+        <rect width={window.screen.width} height={window.screen.height} fill="white" onMouseEnter={() => {current_over_fur = ""}}></rect>
         {
-          // outputの表示j
+          // outputの表示
           <g>
-            <rect x={(window.screen.width - fur_width) / 2} y={-fur_height / 2} width={fur_width} height={fur_height} rx="5" ry="5" fill="#8888cc" />
-            { place_line(window.screen.width / 2, fur_height / 2, output_source.id, output_source.index) }
-            <circle cx={window.screen.width / 2} cy={fur_height / 2} r={10} fill={(tempUpper.id === "output" && tempUpper.index === 0) ? 'red' : 'black'}
-              onClick={() => setTempUpper({isDisplayed: true, id: "output", index: 0})}
+            <rect x={(window.screen.width - fur_width) / 2} y={-fur_height / 2} width={fur_width} height={fur_height} rx="5" ry="5" fill="#8888cc" stroke='black' strokeWidth={5}
+              onMouseEnter={() => {current_over_fur = "output"}}
             />
+            {
+              output_sources.map((output_source, index) => {
+                const upper_x = (window.screen.width - fur_width) / 2 + fur_width * (index + 1) / (output_sources.length + 1);
+                const upper_y = fur_height / 2;
+                const source_color = (tempUpper.id === "output" && tempUpper.index === index) ? 'red' : 'black';
+    
+                return <g>
+                  { place_line(upper_x, upper_y, output_source.id, output_source.index) }
+                  <circle cx={upper_x} cy={upper_y} r={10} fill={source_color}
+                    onClick={() => setTempUpper({isDisplayed: true, id: "output", index: index})}
+                  />
+                </g>
+              })
+            }
           </g>
         }
         { place_furs() }
@@ -250,33 +288,8 @@ function EditPlacement() {
           <rect x={tempFur.x} y={tempFur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaaaaaaa"/>
         }
       </svg>
-      {
-        // Furnitureの新規作成ポップアップ
-        popup.kind === 'NewFur' &&
-        <div className='position-absolute' style={{
-          left: popup.x - 50, top: popup.y - 50
-        }} onMouseLeave={closeMenu}>
-          <Import path={path} width={600} height={400} clickType={() => {}} clickData={genDataFur} clickProcess={genProcessFur} clickRoom={genCroomFur} />
-        </div>
-      }
-      {
-        // Furnitureの編集ポップアップ
-        popup.kind === 'EditFur' &&
-        <div className='edit_fur_popup' style={{
-          left: popup.x - 50, top: popup.y - 50, background: "#9999aa"
-        }} onMouseLeave={closeMenu}>
-          <button onClick={() => {socket.emit("delete fur", path, popup.fur_id); closeMenu();}}>削除</button>
-        </div>
-      }
-      {
-        /*
-        // 実行時
-        isRunMode &&
-        <div style={{position: 'absolute', border: 'solid', left: 20, top: 40, width: 500, height: 250}}>
-          <RunRoom top_room_run_info={top_room_run_info}></RunRoom>
-        </div>*/
-      }
-    </>
+      { display_popup() }
+     </>
   );
 }
 

@@ -1,36 +1,6 @@
 svg text {
-    cursor: pointer;
-}
-svg text:hover {
-    fill: red;
-}
-
-.popup {
-    position: fixed;
-    background-color: lightslategray;
-    padding: 5%;
-    left: 50%;
-    top: 50%;
-    transform: translateX(-50%)
-               translateY(-50%);
-}
-
-.popup button {
-    border-radius: 10px;
-    font-size: 25px;
-    width: 200px;
-    margin: 5px 0px;
-}
-
-.edit_fur_popup {
-    position: absolute;
-    width: 200px;
-    height: 250px;
-}
-
-.edit_fur_popup button {
-    width: 100%;
-    line-height: 50px;
+    font-size: 20px;
+    font-weight: bolder;
 }
 
 .bg-type {

@@ -35,7 +35,7 @@ export interface RoomRunInfo {
   process_insts: [string, StmtInst][],
   croom_run_infos: [string, RoomRunInfo][],
 
-  output_source: {id: string, index: number},
+  output_sources: {id: string, index: number}[],
 }
 
 
@@ -219,31 +219,31 @@ function RunRoom() {
 					}
 				}
 
-				const run_room = (room_run_info: RoomRunInfo): any | undefined => {
+				const run_room = (room_run_info: RoomRunInfo): any[] | undefined => {
 
 					const furs_rets = new Map<string, any[]>();
 
 					// crooms
-					const croom_outputs = new Map<string, any>();
+					const crooms_outputs = new Map<string, any[]>();
 					for(const [croom_path, croom_run_info] of room_run_info.croom_run_infos) {
-						const croom_output = run_room(croom_run_info);
-						if(croom_output === undefined) return undefined;
-						croom_outputs.set(croom_path, croom_output);
+						const croom_outputs = run_room(croom_run_info);
+						if(croom_outputs === undefined) return undefined;
+						crooms_outputs.set(croom_path, croom_outputs);
 					}
 					for(const [id, croom_fur] of room_run_info.croom_furs) {
-						const output = croom_outputs.get(croom_fur.path);
-						if(output === undefined) {
+						const outputs = crooms_outputs.get(croom_fur.path);
+						if(outputs === undefined) {
 							console.log("croom fur " + croom_fur.path + " is wrong");
 							return undefined;
 						}
-						furs_rets.set(id, [output]);
+						furs_rets.set(id, outputs);
 					}
 
 					// datas
-					const data_values = new Map(room_run_info.data_values);
+					const datas_value = new Map(room_run_info.data_values);
 
 					for(const [id, data_fur] of room_run_info.data_furs) {
-						const value = data_values.get(data_fur.path);
+						const value = datas_value.get(data_fur.path);
 						if(value === undefined) {
 							console.log("data fur " + data_fur.path + " is wrong");
 							return undefined;
@@ -281,12 +281,16 @@ function RunRoom() {
 						furs_rets.set(id, rets);
 					}
 
-					// output
-					const outputs = furs_rets.get(room_run_info.output_source.id);
-					if(outputs === undefined) return undefined;
-					const output = outputs[room_run_info.output_source.index];
-					if(output === undefined) return undefined;
-					return output;
+					// outputs
+					const outputs = [];
+					for(const source of room_run_info.output_sources) {
+						const output_values = furs_rets.get(source.id);
+						if(output_values === undefined) return undefined;
+						const output_value = output_values[source.index];
+						if(output_value === undefined) return undefined;
+						outputs.push(output_value);
+					}
+					return outputs;
 				}
 
 				run_room(top_room_run_info);
