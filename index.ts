@@ -133,11 +133,11 @@ io.on('connection', (socket: Socket) => {
 
         io.to(socket.id).emit("update dir", {is_room: dir.is_room, files: Array.from(dir.files)});
     });
-    socket.on("create new file", (dir_path: string, new_name: string, new_type: FileType) => {
+    socket.on("create new file", (dir_path: string, new_name: string | null, new_type: FileType) => {
         const dir = get_dir(dir_path);
         if(dir === undefined) return;
 
-        if(new_name === '') {
+        if(new_name === '' || new_name === null) {
             console.log('invalid new name (empty name)');
             return;
         }
