@@ -54,7 +54,7 @@ function PageRoute() {
       <Route path=':path/type' element={<EditType />}/>
       <Route path=':path/data' element={<EditData />}/>
       <Route path=':path/process' element={<EditProcess />}/>
-      <Route path=':path/placement' element={<EditPlacement />}/>
+      <Route path=':path/room' element={<EditPlacement />}/>
       <Route path=':path/runroom' element={<RunRoom />}/>
     </Routes>
   );

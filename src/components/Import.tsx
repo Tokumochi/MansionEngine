@@ -52,15 +52,12 @@ function Import(props: {
 	const file_width = 100;
 	const file_height = 75;
 
-	const dir_width = file_width * (col_num * 1.5 + 0.5);
-	const dir_height = 2000;
-
-	return <div style={{width: width, height: height}}>
-		<header style={{width: dir_width}} className={`${'new_fur_menu_header'} ${is_room ? 'room_header' : ''}`}>
-			{
-				(pre_dir_path || pre_dir_path === '') &&
-				<div style={{float: 'left'}}>
-					<div style={{color: 'lightblue'}} onClick={() => {
+	return <div className='border border-3 border-dark bg-white overflow-scroll' style={{width: width, height: height}}>
+		<header className='border-bottom border-dark'>
+			<div className='d-flex p-1'>
+				{
+					(pre_dir_path || pre_dir_path === '') &&
+					<div className="btn btn-secondary me-4 p-1" onClick={() => {
 						if(pre_dir_path === undefined) {
 							console.log("What's happening!?");
 							return;
@@ -69,52 +66,52 @@ function Import(props: {
 					}}>
 						上のディレクトリへ
 					</div>
-				</div>
-			}
-			{ dir_name }
-			{
-				is_room && "(room)"
-			}
+				}
+				{ is_room && <h4 className='m-0 text-room'>{ dir_name }(room)</h4> }
+		  		{ !is_room && <h4 className='m-0 text-directory'>{ dir_name }</h4> }
+			</div>
 		</header>
-    	<main className='directory_main' style={{width: dir_width, height: 2000}}>
+    	<main>
+				<div className='container d-flex justify-content-start flex-wrap'>
     		{
-      			Array.from(files).map(([file_name, file_type], index) => {
-      				return <>
-						<div className={`${file_type} ${'file'}`} style={{
-							marginLeft: file_width / 2, marginTop: file_height / 2, width: file_width, height: file_height
-						}} onClick={() => {
-							switch(file_type) {
-								case "type":
-									clickType(path + '-' + file_name);
-									break;
-								case "data":
-									clickData(path + '-' + file_name);
-									break;
-								case "process":
-									clickProcess(path + '-' + file_name);
-									break;
-								case "room":
-									clickRoom(path + '-' + file_name);
-							}
-						}}>
-							{ file_name }
-							{
-								(file_type === 'room' || file_type === 'directory') &&
-								<button className='open_button' style={{
-									marginTop: file_height / 3, width: file_width,
-								}} onClick={(e) => {
-									e.stopPropagation();
-									setPath((path === '' ? '' : path + '-') + file_name);
-								}}>
-									open
-								</button>
-							}
+      		Array.from(files).map(([file_name, file_type], index) => {
+      			return <div className='col-4 mt-5'>
+							<div className={`${"btn border border-dark border-5 rounded-4 ratio ratio-4x3"} ${'bg-' + file_type}`} onClick={() => {
+								switch(file_type) {
+									case "type":
+										clickType(path + '-' + file_name);
+										break;
+									case "data":
+										clickData(path + '-' + file_name);
+										break;
+									case "process":
+										clickProcess(path + '-' + file_name);
+										break;
+									case "room":
+										clickRoom(path + '-' + file_name);
+								}
+							}}>
+								<div className='d-flex flex-column justify-content-center align-items-center'>
+								  <h5 className='w-100 m-0 text-center text-wrap mb-2'>
+										{ file_name.replaceAll('_', ' ') }
+								  </h5>
+									{
+										(file_type === 'room' || file_type === 'directory') &&
+										<button className='btn btn-secondary border border-dark border-3 w-50 p-0' onClick={(e) => {
+											e.stopPropagation();
+											setPath((path === '' ? '' : path + '-') + file_name);
+										}}>
+											開く
+										</button>
+									}
+								</div>
+							</div>
 						</div>
-					</>
-       			})
+       		})
     		}
-    </main>
-  </div>
+				</div>
+    	</main>
+	</div>
 }
 
 export default Import;

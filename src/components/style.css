@@ -5,49 +5,6 @@ svg text:hover {
     fill: red;
 }
 
-.directory_header {
-    float: left;
-    width: 100%;
-    z-index: 3;
-}
-
-.directory_main {
-    display: flex;
-    -webkit-flex-wrap: wrap;          /* Safari etc. */
-    -ms-flex-wrap    : wrap;          /* IE10        */
-    flex-wrap        : wrap;
-    align-content: flex-start;
-}
-
-.new_fur_menu_header {
-    float: left;
-    z-index: 3;
-}
-
-header {
-    font-size: large;
-    background-color: #aaaaaa;
-}
-
-header button {
-    background-color: white;
-    border-radius: 5px;
-    margin: 5px;
-    font-size: large;
-}
-
-.room_header {
-    background-color: #aaaacc;
-}
-
-.file {
-    border-radius: 15px;
-}
-
-.delete_button {
-    background-color: red;
-}
-
 .popup {
     position: fixed;
     background-color: lightslategray;
@@ -65,12 +22,6 @@ header button {
     margin: 5px 0px;
 }
 
-.import_popup {
-    position: absolute;
-    overflow: scroll;
-    background: #9999aa
-}
-
 .edit_fur_popup {
     position: absolute;
     width: 200px;
@@ -82,22 +33,43 @@ header button {
     line-height: 50px;
 }
 
-.type {
-    background-color: #ffcd37;
+.bg-type {
+    background-color: #ffcd37 !important;
+}
+.bg-type:hover {
+    background-color: #bb9a37 !important;
 }
 
-.data {
-    background-color: #aaccaa;
+.bg-data {
+    background-color: #aaccaa !important;
+}
+.bg-data:hover {
+    background-color: #77aa77 !important;
 }
 
-.process {
-    background-color: #ccaaaa;
+.bg-process {
+    background-color: #eeaaaa !important;
+}
+.bg-process:hover {
+    background-color: #cc8888 !important;
 }
 
-.room {
-    background-color: #aaaacc;
+.text-room {
+    color: #9999ee !important;
+}
+.bg-room {
+    background-color: #aaaadd !important;
+}
+.bg-room:hover {
+    background-color: #7777aa !important;
 }
 
-.directory {
-    background-color: #aaaaaa;
+.text-directory {
+    color: #777777 !important;
+}
+.bg-directory {
+    background-color: #aaaaaa !important;
+}
+.bg-directory:hover {
+    background-color: #777777 !important;
 }

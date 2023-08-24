@@ -139,7 +139,7 @@ function EditPlacement() {
     // process furs
     process_furs.forEach((process_fur, id) => {
       fur_elements.push(<g>
-        <rect x={process_fur.x} y={process_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#ccaaaa" 
+        <rect x={process_fur.x} y={process_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#eeaaaa" 
           onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: process_fur.x, y: process_fur.y})}
         />
         <text x={process_fur.x + fur_width / 2} y={process_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central"
@@ -203,7 +203,7 @@ function EditPlacement() {
     // croom furs
     croom_furs.forEach((croom_fur, id) => {
       fur_elements.push(<g>
-        <rect x={croom_fur.x} y={croom_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaaacc"
+        <rect x={croom_fur.x} y={croom_fur.y} width={fur_width} height={fur_height} rx="5" ry="5" fill="#aaaadd"
           onMouseDown={() => setTempFur({isDisplayed: true, id: id, x: croom_fur.x, y: croom_fur.y})} 
         />
         <text x={croom_fur.x + fur_width / 2} y={croom_fur.y + fur_height / 2} text-anchor="middle" dominant-baseline="central"
@@ -253,7 +253,7 @@ function EditPlacement() {
       {
         // Furnitureの新規作成ポップアップ
         popup.kind === 'NewFur' &&
-        <div className='import_popup' style={{
+        <div className='position-absolute' style={{
           left: popup.x - 50, top: popup.y - 50
         }} onMouseLeave={closeMenu}>
           <Import path={path} width={600} height={400} clickType={() => {}} clickData={genDataFur} clickProcess={genProcessFur} clickRoom={genCroomFur} />
