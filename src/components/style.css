@@ -43,3 +43,17 @@ svg text {
 .bg-directory:hover {
     background-color: #777777 !important;
 }
+
+.tab {
+    border: 2px solid gray;
+    border-left: none;
+    border-bottom: none;
+    border-top-right-radius: 10px;
+    background: white;
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+.tab.active {
+    background: #cccccc;
+}
