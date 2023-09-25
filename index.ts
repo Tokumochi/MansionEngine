@@ -6,7 +6,7 @@ import { gen_real_path } from './lib/lib'
 import { get_type_str, is_same_type, set_type_str, type_str_to_type, type_to_simple_data_str } from './lib/typeManager'
 import { get_data_str, has_joined_data_str, data_str_to_type_and_data, set_data_str } from './lib/dataManager'
 import { get_process, Process, set_process } from './lib/processManager'
-import { get_place, has_joined_place, get_fur_emit_type, DataFurniture, ProcessFurniture, CroomFurniture } from './lib/placeManager'
+import { get_place, has_joined_place, get_fur_emit_type, DataFurniture, ProcessFurniture, CroomFurniture, get_fur_emit_type_for_debug } from './lib/placeManager'
 import { get_dir, has_joined_dir, FileType } from './lib/dirManager'
 import { StmtInst, genProcessInst } from './lib/genInst'
 
@@ -159,7 +159,7 @@ io.on('connection', (socket: Socket) => {
                 break;
             case "room":
                 fs.mkdirSync(real_path + '/' + new_name + '.room');
-                fs.writeFileSync(real_path + '/' + new_name + '.room/placement.json', '{\n"data_furs": [],\n"process_furs": [],\n"croom_furs": [],\n"output_sources": []\n}');
+                fs.writeFileSync(real_path + '/' + new_name + '.room/placement.json', '{\n"data_furs": [],\n"process_furs": [],\n"croom_furs": [],\n"output_sources": [],\n"debugs": []\n}');
                 break;
             case "type":
                 fs.writeFileSync(real_path + '/' + new_name + '.type.json', '"number"');
@@ -168,7 +168,7 @@ io.on('connection', (socket: Socket) => {
                 fs.writeFileSync(real_path + '/' + new_name + '.data.json', '"0"');
                 break;
             case "process":
-                fs.writeFileSync(real_path + '/' + new_name + '.process.json', '{\n"args": [],\n"ret": [],\n"code": ""\n}');
+                fs.writeFileSync(real_path + '/' + new_name + '.process.json', '{\n"params_str": "",\n"rets_str": "",\n"code": ""\n}');
         }
         dir.files.set(new_name, new_type);
         io.in(dir_path).emit("create new file", new_name, new_type);
@@ -233,6 +233,15 @@ io.on('connection', (socket: Socket) => {
         io.to(socket.id).emit("update process furs", Array.from(place.process_furs));
         io.to(socket.id).emit("update croom furs", Array.from(place.croom_furs));
         io.to(socket.id).emit("update output sources", place.output_sources);
+
+        io.to(socket.id).emit("update debugs", Array.from(place.debugs).map(([debug_name, debug]) => [
+            debug_name, {
+                data_furs: Array.from(debug.data_furs),
+                process_furs: Array.from(debug.process_furs),
+                croom_furs: Array.from(debug.croom_furs),
+                process_connects: Array.from(debug.process_connects),
+            }
+        ]));
     });
     socket.on("set fur pos", (room_path: string, target_id: string, x: number, y: number) => {
         const place = get_place(room_path);
@@ -256,9 +265,9 @@ io.on('connection', (socket: Socket) => {
 
         const target_croom_fur = place.croom_furs.get(target_id);
         if(target_croom_fur !== undefined) {
-            const new_room_fur = {...target_croom_fur, x: x, y: y};
-            place.croom_furs.set(target_id, new_room_fur);
-            io.in(room_path).emit("update croom fur", target_id, new_room_fur);
+            const new_croom_fur = {...target_croom_fur, x: x, y: y};
+            place.croom_furs.set(target_id, new_croom_fur);
+            io.in(room_path).emit("update croom fur", target_id, new_croom_fur);
             return;
         }
 
@@ -271,21 +280,26 @@ io.on('connection', (socket: Socket) => {
         const target_data_fur = place.data_furs.get(target_id);
         if(target_data_fur !== undefined) {
             place.data_furs.delete(target_id);
-            io.in(room_path).emit("update data furs", Array.from(place.data_furs));
+            io.in(room_path).emit("update data fur", target_id, null);
             return;
         }
 
         const target_process_fur = place.process_furs.get(target_id);
         if(target_process_fur !== undefined) {
+            Array.from(place.debugs.values()).forEach(debug => {
+                debug.process_connects.forEach((source, connect_id) => {
+                  if(target_id === source.id) debug.process_connects.delete(connect_id);
+                });
+            });
             place.process_furs.delete(target_id);
-            io.in(room_path).emit("update process furs", Array.from(place.process_furs));
+            io.in(room_path).emit("update process fur", target_id, null);
             return;
         }
 
         const target_croom_fur = place.croom_furs.get(target_id);
         if(target_croom_fur !== undefined) {
             place.croom_furs.delete(target_id);
-            io.in(room_path).emit("update croom furs", Array.from(place.croom_furs));
+            io.in(room_path).emit("update croom fur", target_id, null);
             return;
         }
 
@@ -416,6 +430,189 @@ io.on('connection', (socket: Socket) => {
         place.output_sources.pop();
         io.in(room_path).emit("update output sources", place.output_sources);
     });
+    socket.on("create new debug", (room_path: string, new_debug_name: string | null) => {
+        const place = get_place(room_path);
+        if(place === undefined) return;
+
+        if(new_debug_name === '' || new_debug_name === null) {
+            console.log('invalid new name (empty name)');
+            return;
+        }
+
+        place.debugs.set(new_debug_name, {
+            data_furs: new Map(),
+            process_furs: new Map(),
+            croom_furs: new Map(),
+            process_connects: new Map()
+        });
+        io.in(room_path).emit("update debug", new_debug_name);
+    });
+    socket.on("set debug fur pos", (room_path: string, debug_name: string, target_id: string, x: number, y: number) => {
+        const place = get_place(room_path);
+        if(place === undefined) return;
+
+        const debug = place.debugs.get(debug_name);
+        if(debug === undefined) return;
+        
+        const target_debug_data_fur = debug.data_furs.get(target_id);
+        if(target_debug_data_fur !== undefined) {
+            const new_debug_data_fur = {...target_debug_data_fur, x: x, y: y};
+            debug.data_furs.set(target_id, new_debug_data_fur);
+            io.in(room_path).emit("update debug data fur", debug_name, target_id, new_debug_data_fur);
+            return;
+        }
+
+        const target_debug_process_fur = debug.process_furs.get(target_id);
+        if(target_debug_process_fur !== undefined) {
+            const new_debug_process_fur = {...target_debug_process_fur, x: x, y: y};
+            debug.process_furs.set(target_id, new_debug_process_fur);
+            io.in(room_path).emit("update debug process fur", debug_name, target_id, new_debug_process_fur);
+            return;
+        }
+
+        const target_debug_croom_fur = debug.croom_furs.get(target_id);
+        if(target_debug_croom_fur !== undefined) {
+            const new_debug_croom_fur = {...target_debug_croom_fur, x: x, y: y};
+            debug.croom_furs.set(target_id, new_debug_croom_fur);
+            io.in(room_path).emit("update debug croom fur", debug_name, target_id, new_debug_croom_fur);
+            return;
+        }
+
+        console.log("room path, debug name or fur id is wrong.")
+    });
+    socket.on("delete debug fur", (room_path: string, debug_name: string, target_id: string) => {
+        const place = get_place(room_path);
+        if(place === undefined) return;
+
+        const debug = place.debugs.get(debug_name);
+        if(debug === undefined) return;
+        
+        const target_debug_data_fur = debug.data_furs.get(target_id);
+        if(target_debug_data_fur !== undefined) {
+            debug.data_furs.delete(target_id);
+            io.in(room_path).emit("update debug data fur", debug_name, target_id, null);
+            return;
+        }
+
+        const target_debug_process_fur = debug.process_furs.get(target_id);
+        if(target_debug_process_fur !== undefined) {
+            debug.process_connects.forEach((source, connect_id) => {
+              if(source.id === target_id) debug.process_connects.delete(connect_id);
+            });
+            debug.process_furs.delete(target_id);
+            io.in(room_path).emit("update debug process fur", debug_name, target_id, null);
+            return;
+        }
+
+        const target_debug_croom_fur = debug.croom_furs.get(target_id);
+        if(target_debug_croom_fur !== undefined) {
+            debug.croom_furs.delete(target_id);
+            io.in(room_path).emit("update debug croom fur", debug_name, target_id, null);
+            return;
+        }
+
+        console.log("room path, debug name or fur id is wrong.")
+    });
+    socket.on("connect furs for debug", (room_path: string, debug_name: string, upper_id: string, upper_index: number, lower_id: string, lower_index: number) => {
+        if(upper_id === lower_id) return;
+
+        const place = get_place(room_path);
+        if(place === undefined) return;
+
+        const debug = place.debugs.get(debug_name);
+        if(debug === undefined) return;
+
+        const lower_type = get_fur_emit_type_for_debug(place, debug, lower_id, lower_index);
+        if(lower_type === undefined) return;
+
+        // 上側がデバッグ用のprocess_furnitureの場合
+        const upper_debug_process_fur = debug.process_furs.get(upper_id);
+        if(upper_debug_process_fur !== undefined) {
+            if(is_same_type(upper_debug_process_fur.sources[upper_index].type, lower_type)) {
+                upper_debug_process_fur.sources[upper_index].id = lower_id;
+                upper_debug_process_fur.sources[upper_index].index = lower_index;
+                io.in(room_path).emit("update debug process fur", debug_name, upper_id, upper_debug_process_fur);
+            }
+        }
+        
+        // 上側がメインのprocess_furnitureの場合
+        const upper_main_process_fur = place.process_furs.get(upper_id);
+        if(upper_main_process_fur !== undefined) {
+            if(is_same_type(upper_main_process_fur.sources[upper_index].type, lower_type)) {
+                debug.process_connects.set(upper_id + '-' + upper_index, {id: lower_id, index: lower_index});
+                io.in(room_path).emit("update debug process connect", debug_name, upper_id, upper_index, lower_id, lower_index);
+            }
+        }
+    });
+    socket.on("gen debug data fur", (room_path: string, debug_name: string, x: number, y: number, data_path: string) => {
+        const place = get_place(room_path);
+        if(place === undefined) return;
+
+        const debug = place.debugs.get(debug_name);
+        if(debug === undefined) return;
+
+        const target_data_str = get_data_str(data_path);
+        if(target_data_str === undefined) {
+            console.log("data path is wrong.");
+            return;
+        }
+        const target_type_and_data = data_str_to_type_and_data(target_data_str);
+        if(target_type_and_data === undefined) return;
+
+        const new_id = Math.random().toString(36).slice(-8);
+
+        const new_debug_data_fur = {
+            x: x,
+            y: y,
+            path: data_path,
+            data_type: target_type_and_data[0],
+        };
+        debug.data_furs.set(new_id, new_debug_data_fur);
+        io.in(room_path).emit("update debug data fur", debug_name, new_id, new_debug_data_fur);
+    });
+    socket.on("gen debug process fur", (room_path: string, debug_name: string, x: number, y: number, process_path: string) => {
+        const place = get_place(room_path);
+        if(place === undefined) return;
+
+        const debug = place.debugs.get(debug_name);
+        if(debug === undefined) return;
+
+        const target_process = get_process(process_path);
+        if(target_process === undefined) {
+            console.log("process path is wrong.");
+            return;
+        }
+
+        const new_id = Math.random().toString(36).slice(-8);
+        const param_obj_type = type_str_to_type(target_process.params_str);
+        if(param_obj_type === undefined) {
+            console.log("can't compile params str");
+            return;
+        }
+        if(param_obj_type.kind !== 'obj') {
+            console.log("params str' kind is not obj");
+            return;
+        }
+        const ret_obj_type = type_str_to_type(target_process.rets_str);
+        if(ret_obj_type === undefined) {
+            console.log("can't compile rets str");
+            return;
+        }
+        if(ret_obj_type.kind !== 'obj') {
+            console.log("rets str' kind is not obj");
+            return;
+        }
+
+        const new_debug_process_fur: ProcessFurniture = {
+            x: x,
+            y: y,
+            path: process_path,
+            sources: param_obj_type.pros.map((pro) => { return {id: "-1", index: -1, type: pro[1]} }),
+            emits: ret_obj_type.pros.map((pro) => pro[1]),
+        };
+        debug.process_furs.set(new_id, new_debug_process_fur);
+        io.in(room_path).emit("update debug process fur", debug_name, new_id, new_debug_process_fur);
+    });
     socket.on("save placement", (room_path: string) => {
         const place = get_place(room_path);
         if(place === undefined) return;
@@ -430,6 +627,14 @@ io.on('connection', (socket: Socket) => {
             process_furs: Array.from(place.process_furs),
             croom_furs: Array.from(place.croom_furs),
             output_sources: place.output_sources,
+            debugs: Array.from(place.debugs).map(debug => [
+                debug[0], {
+                    data_furs: Array.from(debug[1].data_furs),
+                    process_furs: Array.from(debug[1].process_furs),
+                    croom_furs: Array.from(debug[1].croom_furs),
+                    process_connects: Array.from(debug[1].process_connects),
+                }
+            ])
         }, null, 2));
     });
 

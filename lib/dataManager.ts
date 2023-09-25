@@ -41,7 +41,7 @@ export const set_data_str = (data_path: string, new_data_str: string) => {
 
     //if(data_str_to_type_and_data(new_data_str) === undefined) return false;
     data_strs.set(data_path, new_data_str);
-    fs.writeFileSync(file_and_real_path.real_path, JSON.stringify(new_data_str));
+    fs.writeFileSync(file_and_real_path.real_path, JSON.stringify(new_data_str, null, 2));
     return true;
 }
 

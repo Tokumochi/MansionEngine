@@ -42,7 +42,7 @@ export const set_type_str = (type_path: string, new_type_str: string) => {
 
     //if(type_str_to_type(new_type_str) === undefined) return false;
     type_strs.set(type_path, new_type_str);
-    fs.writeFileSync(file_and_real_path.real_path, JSON.stringify(new_type_str));
+    fs.writeFileSync(file_and_real_path.real_path, JSON.stringify(new_type_str, null, 2));
     return true;
 }
 

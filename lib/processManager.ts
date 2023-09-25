@@ -40,6 +40,6 @@ export const set_process = (process_path: string, new_process: Process) => {
     }
 
     processes.set(process_path, new_process);
-    fs.writeFileSync(file_and_real_path.real_path, JSON.stringify(new_process));
+    fs.writeFileSync(file_and_real_path.real_path, JSON.stringify(new_process, null, 2));
     return true;
 }

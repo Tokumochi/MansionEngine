@@ -3,11 +3,20 @@ import fs from 'fs'
 import { gen_real_path } from './lib'
 import { Type } from './typeManager'
 
+export interface DebugPlacement {
+    data_furs: Map<string, DataFurniture>,
+    process_furs: Map<string, ProcessFurniture>,
+    croom_furs: Map<string, CroomFurniture>,
+    process_connects: Map<string, {id: string, index: number}> // キーは[id]+'-'+[index]
+}
+
 export interface Placement {
     data_furs: Map<string, DataFurniture>,
     process_furs: Map<string, ProcessFurniture>,
     croom_furs: Map<string, CroomFurniture>,
     output_sources: {id: string, index: number, type: Type}[],
+
+    debugs: Map<string, DebugPlacement>
 }
 
 interface Furniture {
@@ -47,7 +56,13 @@ const add_place = (room_path: string): Placement | undefined => {
         data_furs: [string, DataFurniture][],
         process_furs: [string, ProcessFurniture][],
         croom_furs: [string, CroomFurniture][],
-        output_sources: {id: string, index: number, type: Type}[]
+        output_sources: {id: string, index: number, type: Type}[],
+        debugs: [string, {
+            data_furs: [string, DataFurniture][],
+            process_furs: [string, ProcessFurniture][],
+            croom_furs: [string, CroomFurniture][],
+            process_connects: [string, {id: string, index: number}][],
+        }][]
     } = JSON.parse(fs.readFileSync(file_and_real_path.real_path + "/placement.json").toString());
 
     const place: Placement = {
@@ -55,6 +70,13 @@ const add_place = (room_path: string): Placement | undefined => {
         process_furs: new Map(furs.process_furs),
         croom_furs: new Map(furs.croom_furs),
         output_sources: furs.output_sources,
+
+        debugs: new Map(furs.debugs.map(debug => [debug[0], {
+            data_furs: new Map(debug[1].data_furs),
+            process_furs: new Map(debug[1].process_furs),
+            croom_furs: new Map(debug[1].croom_furs),
+            process_connects: new Map(debug[1].process_connects),
+        }]))
     }
     places.set(room_path, place);
     return place;
@@ -88,6 +110,37 @@ export const get_fur_emit_type = (place: Placement, id: string, index: number): 
     }
 
     const croom_fur = place.croom_furs.get(id);
+    if(croom_fur !== undefined) {
+        const emit = croom_fur.emits[index];
+        if(emit === undefined) {
+            console.log("index is wrong");
+            return undefined;
+        }
+        return emit;
+    }
+
+    return undefined;
+}
+
+// デバッグ用のfurnitureの出力されるtypeを取得する
+export const get_fur_emit_type_for_debug = (place: Placement, debug: DebugPlacement, id: string, index: number): Type | undefined => {
+    const type = get_fur_emit_type(place, id, index);
+    if(type !== undefined) return type;
+
+    const data_fur = debug.data_furs.get(id);
+    if(data_fur !== undefined) return data_fur.data_type;
+
+    const process_fur = debug.process_furs.get(id);
+    if(process_fur !== undefined) {
+        const emit = process_fur.emits[index];
+        if(emit === undefined) {
+            console.log("index is wrong");
+            return undefined;
+        }
+        return emit;
+    }
+
+    const croom_fur = debug.croom_furs.get(id);
     if(croom_fur !== undefined) {
         const emit = croom_fur.emits[index];
         if(emit === undefined) {
